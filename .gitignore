@@ -1,0 +1,17 @@
+.DS_Store
+*.DS_Store
+.env
+.env.local
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+.svelte-kit/
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+*.sqlite
+*.db
+.ruff_cache/
