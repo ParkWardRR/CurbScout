@@ -1,0 +1,28 @@
+# PromptHarbor Configuration
+# Override any value with environment variables (PH_ADDR, PH_DATA_DIR, VAST_API_KEY, etc.)
+
+controller:
+  addr: ":8080"
+  data_dir: "./state"
+  db_file: "ph.db"
+
+storage:
+  backend: "local"          # "local" or "gcs"
+  local_dir: "./state/artifacts"
+  gcs_bucket: "ph-outputs-2026"
+  gcs_assets: "ph-assets-2026"
+  gcs_gallery: "ph-gallery-2026"
+
+vast_ai:
+  # api_key: ""             # Set via VAST_API_KEY env var
+  default_gpu: "RTX_5090"
+  max_price_hr: 0.50
+  default_disk: 60
+  docker_image: "pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime"
+
+limits:
+  max_concurrent_jobs: 4
+  max_concurrent_nodes: 2
+  daily_budget: 10.00
+  per_run_timeout: 1800     # 30 minutes
+  max_instance_minutes: 120 # 2 hours
