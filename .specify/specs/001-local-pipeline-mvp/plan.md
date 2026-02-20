@@ -13,7 +13,7 @@ SQLite, and provides a premium dark-mode SvelteKit review UI on
 localhost with keyboard-driven correction. A FastAPI backend bridges
 the Python pipeline and the web frontend. Daily export bundles
 (JSONL + CSV + crops + HTML) complete the MVP. Everything runs
-offline on an M4 Mac mini. SwiftUI native app is deferred to Phase 5.
+offline on an M4 Mac mini. SwiftUI native app is deferred to Phase 8.
 
 ## Technical Context
 

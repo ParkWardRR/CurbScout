@@ -322,41 +322,42 @@ PUT  /api/config             → Update config
 - **Budget**: ~$5–20 per training run on Vast.ai (RTX 4090, ~2-4 hours)
 - **Timeline**: ~1.5 weeks (including dataset curation)
 
-### Phase 5 — Native macOS App (SwiftUI)
-- Port the SvelteKit review UI to a native Swift/SwiftUI macOS app
-- SwiftData for local persistence (reads same SQLite database)
-- Native video scrubber with AVFoundation
-- Menu bar status indicator for pipeline progress
-- Auto-launch on camera connection via IOKit/DiskArbitration
-- Keyboard shortcuts via SwiftUI `.keyboardShortcut()`
-- **Timeline**: ~2–3 weeks
-
-### Phase 6 — Curb Intelligence (Parking, Hazards)
-- **Phase 6A — Parking Sign Detection & OCR**:
+### Phase 5 — Curb Intelligence (Parking, Hazards)
+- **Phase 5A — Parking Sign Detection & OCR**:
   - Deploy YOLOv8 sign detector + PaddleOCR v3 (PP-OCRv5)
   - Detect parking/street-sweeping signs in ride footage
   - Extract text → parse time windows → structured rules
   - Santa Monica municipal code integration for "can I park here?"
-- **Phase 6B — Hazard & Obstruction Mapping**:
+- **Phase 5B — Hazard & Obstruction Mapping**:
   - Bike lane obstructions, potholes, construction zones
   - Temporal change detection (same route, different days)
-- **Phase 6C — Storefront OCR Diary**:
+- **Phase 5C — Storefront OCR Diary**:
   - Track business changes on frequently ridden routes
 - All reuse the same "event timeline + evidence + corrections" DB design
 - **Timeline**: ~4–6 weeks (incremental sub-phases)
 
-### Phase 7 — Active Learning Loop
+### Phase 6 — Active Learning Loop
 - Model serves predictions → user corrects → corrections auto-queued
   for next training batch → Vast.ai trains → new model deployed
 - Semi-automated: user triggers training, reviews A/B results
 - Model versioning: each model tagged with training data hash
 - **Timeline**: ~2 weeks
 
-### Phase 8 — Multi-Device & Collaboration
+### Phase 7 — Multi-Device & Collaboration
 - Sync database across multiple Macs (CRDTs or SQLite changeset sync)
 - Multiple riders contributing sightings to a shared dataset
 - Web dashboard supports multi-user views
 - **Timeline**: ~3–4 weeks
+
+### Phase 8 — Native macOS App (SwiftUI)
+- Port the SvelteKit review UI to a native Swift/SwiftUI macOS app
+- SwiftData for local persistence (reads same SQLite database)
+- Native video scrubber with AVFoundation
+- Menu bar status indicator for pipeline progress
+- Auto-launch on camera connection via IOKit/DiskArbitration
+- Keyboard shortcuts via SwiftUI `.keyboardShortcut()`
+- Deferred to end of roadmap — SvelteKit web UI serves as primary review interface
+- **Timeline**: ~2–3 weeks
 
 ---
 
@@ -366,7 +367,7 @@ PUT  /api/config             → Update config
 - If native-feeling desktop is wanted without full SwiftUI rewrite,
   Tauri wraps SvelteKit in a lightweight native window.
 - Rust backend, tiny binary size, macOS native menus.
-- Could be Phase 5 alternative if SwiftUI feels too heavy.
+- Could be a Phase 8 alternative if SwiftUI feels too heavy.
 
 ### GPS/Location Integration
 - Insta360 GO 3S has no built-in GPS.

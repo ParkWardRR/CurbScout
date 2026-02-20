@@ -147,7 +147,7 @@ INSERT INTO _schema_meta (key, value) VALUES ('app_name', 'CurbScout');
 6. **Serve Assets**: Stream crop images and video files via HTTP.
 
 ### Note on SwiftData
-- SwiftData is deferred to Phase 5 (native macOS app).
+- SwiftData is deferred to Phase 8 (native macOS app).
 - For MVP, both pipeline and API use Python `sqlite3` directly.
 - If SwiftData is added later, it reads the same SQLite file.
 

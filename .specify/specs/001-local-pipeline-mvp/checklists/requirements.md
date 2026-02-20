@@ -44,5 +44,5 @@
 - All items pass — spec + plan + tasks are ready for `/speckit.implement`
 - SvelteKit chosen over SwiftUI for faster solo-dev shipping + Phase 3 reuse
 - Three pre-trained models available Day 1 (no training needed for MVP)
-- SwiftUI native app deferred to Phase 5 in the updated roadmap
+- SwiftUI native app deferred to Phase 8 in the updated roadmap
 - Total task count: 86 tasks across 9 phases (~3 weeks estimated)
