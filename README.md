@@ -793,25 +793,25 @@ Deploy the SvelteKit application to Vercel or Cloudflare Pages for remote browsi
 
 Export corrected labels from CurbScout database. Upload curated datasets to GCS. Fine-tune YOLOv8n-cls on Stanford Cars + CurbScout corrections on RTX 4090 instances. A/B test new model against Jordo23 baseline. Auto-export to CoreML, ONNX, and TensorRT. Model versioning with training data hash.
 
-### Phase 5 — Native macOS Application
+### Phase 5 — Curb Intelligence
 
-Port the SvelteKit review UI to a native SwiftUI application. SwiftData persistence layer reading the shared SQLite database. Native AVFoundation video scrubber. Menu bar status indicator for pipeline progress. Auto-launch on camera connection via IOKit/DiskArbitration.
-
-### Phase 6 — Curb Intelligence
-
-- **6A: Parking Sign OCR** — YOLOv8 sign detector + PaddleOCR for text extraction. Parse time windows and restrictions. Santa Monica municipal code integration for "can I park here?"
-- **6B: Hazard Mapping** — bike lane obstructions, potholes, construction zones. Temporal change detection across rides on the same route.
-- **6C: Storefront OCR** — track business changes on frequently ridden routes.
+- **5A: Parking Sign OCR** — YOLOv8 sign detector + PaddleOCR for text extraction. Parse time windows and restrictions. Santa Monica municipal code integration for "can I park here?"
+- **5B: Hazard Mapping** — bike lane obstructions, potholes, construction zones. Temporal change detection across rides on the same route.
+- **5C: Storefront OCR** — track business changes on frequently ridden routes.
 
 All curb intelligence modules reuse the existing event timeline, evidence asset, and human correction database architecture.
 
-### Phase 7 — Active Learning Loop
+### Phase 6 — Active Learning Loop
 
 Automated correction-to-training pipeline: user corrections auto-queue for the next training batch. Semi-automated Vast.ai training runs. Model versioning with data lineage tracking.
 
-### Phase 8 — Multi-Device Collaboration
+### Phase 7 — Multi-Device Collaboration
 
 Database sync across multiple Macs via CRDTs or SQLite changeset extension. Multiple riders contributing to a shared sighting dataset. Multi-user dashboard views with per-user review progress.
+
+### Phase 8 — Native macOS Application
+
+Port the SvelteKit review UI to a native SwiftUI application. SwiftData persistence layer reading the shared SQLite database. Native AVFoundation video scrubber. Menu bar status indicator for pipeline progress. Auto-launch on camera connection via IOKit/DiskArbitration. This phase is deferred to the end of the roadmap — the web-first SvelteKit interface serves as the primary review experience and is reusable across platforms.
 
 ---
 
