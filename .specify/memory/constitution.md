@@ -5,12 +5,22 @@
   Added sections:
     - VIII. Hardware Acceleration Maximalism (multi-backend strategy)
   Removed sections: None
-  Templates requiring updates:
-    - .specify/specs/001-local-pipeline-mvp/spec.md ⚠️ updated
-    - .specify/specs/001-local-pipeline-mvp/plan.md ⚠️ updated
-    - .specify/specs/001-local-pipeline-mvp/research.md ⚠️ updated
-    - .specify/specs/001-local-pipeline-mvp/tasks.md ⚠️ updated
-  Follow-up TODOs: None
+  Roadmap reorder:
+    - Phase 5 (Curb Intelligence), Phase 6 (Active Learning), Phase 7 (Multi-Device), Phase 8 (Native macOS)
+  Synced artifacts:
+    - .specify/specs/001-local-pipeline-mvp/spec.md ✅ approved
+    - .specify/specs/001-local-pipeline-mvp/plan.md ✅ approved
+    - .specify/specs/001-local-pipeline-mvp/research.md ✅ synced
+    - .specify/specs/001-local-pipeline-mvp/tasks.md ✅ synced
+    - .specify/specs/001-local-pipeline-mvp/data-model.md ✅ synced
+    - .specify/specs/001-local-pipeline-mvp/acceleration.md ✅ synced
+    - .specify/specs/001-local-pipeline-mvp/checklists/requirements.md ✅ synced
+    - README.md ✅ comprehensive rewrite complete
+    - CONTRIBUTING.md ✅ committed
+    - SECURITY.md ✅ committed
+    - CODE_OF_CONDUCT.md ✅ committed
+    - LICENSE.md ✅ Blue Oak 1.0.0
+  Follow-up TODOs: None — ready for /speckit.implement
 -->
 
 # CurbScout Constitution

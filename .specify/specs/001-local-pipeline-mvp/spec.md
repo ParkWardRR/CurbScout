@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-local-pipeline-mvp`
 **Created**: 2026-02-21
-**Status**: Draft
+**Status**: Approved
 **Input**: User description: "Build a local-first macOS app that ingests Insta360 GO 3S ride videos via USB Drive/U-Disk at home, extracts car sightings (make/model now, best-effort year/trim later), stores in SQLite, provides SwiftUI review/correction UI, and exports a daily report bundle (JSONL/CSV + crops + highlight clips). Cloud sync and Vast.ai training are later phases."
 
 ## User Scenarios & Testing *(mandatory)*

@@ -23,7 +23,7 @@
 - [ ] T002 [P] Create SvelteKit project `web/` using `npx -y sv create` with Svelte 5, TypeScript, adapter-node. Add dev dependencies: @sveltejs/adapter-node, video.js
 - [ ] T003 [P] Create `scripts/setup.sh` — installs Python deps via uv, creates `~/CurbScout/{raw,derived/frames,derived/crops,exports,models}`, runs `npm install` in web/, downloads models if missing
 - [ ] T004 [P] Create `scripts/start.sh` — starts FastAPI on :8000 (`uvicorn curbscout.api:app`) + SvelteKit dev server on :5173 (`npm run dev`) in parallel, with trap for cleanup
-- [ ] T005 [P] Create `.gitignore` — exclude `*.mlmodel`, `*.pt`, `*.onnx`, `~/CurbScout/`, `.venv/`, `__pycache__/`, `*.db*`, `node_modules/`, `.svelte-kit/`, build artifacts
+- [x] T005 [P] Create `.gitignore` — exclude `*.mlmodel`, `*.pt`, `*.onnx`, `~/CurbScout/`, `.venv/`, `__pycache__/`, `*.db*`, `node_modules/`, `.svelte-kit/`, build artifacts ✅ committed
 - [ ] T006 [P] Configure Ruff (`pipeline/ruff.toml`) and ESLint + Prettier (`web/.eslintrc.cjs`, `web/.prettierrc`)
 
 **Checkpoint**: Both Python and SvelteKit projects runnable independently. `scripts/start.sh` launches both servers.
@@ -263,8 +263,8 @@
 - [ ] T080 [P] Add pipeline progress API: `GET /api/pipeline/status` for web UI to show processing state
 - [ ] T081 Performance audit: profile pipeline on 30-min ride, optimize bottlenecks. Run `benchmark_accel.sh` and report per-platform speedups.
 - [ ] T082 [P] Add `web/src/routes/settings/+page.svelte` — UI for config editing (fps, thresholds, model paths, compute backend, Vast.ai API key)
-- [ ] T083 [P] Update `readme.md` — architecture diagram (with acceleration matrix), setup instructions, link to quickstart
-- [ ] T084 [P] Create `CONTRIBUTING.md` — dev setup, code style, PR process
+- [x] T083 [P] Update `README.md` — architecture diagram (with acceleration matrix), setup instructions, link to quickstart ✅ committed
+- [x] T084 [P] Create `CONTRIBUTING.md` — dev setup, code style, PR process ✅ committed
 - [ ] T085 Security review: validate file paths, no directory traversal in API
 - [ ] T086 Run quickstart.md validation end-to-end
 - [ ] T087 [P] Add `/api/accelerator/info` endpoint — returns detected backend, features (AVX-512, NEON, ANE, CUDA), model formats available
