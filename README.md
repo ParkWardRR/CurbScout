@@ -16,14 +16,16 @@
 [![YOLOv8](https://img.shields.io/badge/yolov8-ultralytics-6F42C1?style=for-the-badge)]()
 [![Go SDK](https://img.shields.io/badge/go_sdk-fleet_mgmt-00ADD8?style=for-the-badge&logo=go&logoColor=white)]()
 [![GCS](https://img.shields.io/badge/gcs-artifact_sync-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)]()
+[![Cloud Run](https://img.shields.io/badge/cloud_run-dashboard-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)]()
+[![Firestore](https://img.shields.io/badge/firestore-sighting_data-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)]()
 [![Vast.ai](https://img.shields.io/badge/vast.ai-burst_GPU-9B59B6?style=for-the-badge)]()
 [![Status](https://img.shields.io/badge/status-active_development-2ECC71?style=for-the-badge)]()
 
 <br/>
 
 *Ingest daily Insta360 GO 3S cycling footage on an M4 Mac mini.*
-*Detect, classify, and catalog every vehicle sighting — entirely offline.*
-*Burst to rented NVIDIA GPUs for training. Sync only what matters.*
+*Detect, classify, and catalog every vehicle sighting — locally.*
+*Review from anywhere via GCP-hosted dashboard. Burst to NVIDIA GPUs when ready.*
 
 </div>
 
@@ -60,9 +62,9 @@
 
 CurbScout is a perception pipeline purpose-built for extracting structured urban data from action camera footage. The system processes raw 4K video captured during daily cycling commutes, identifies every vehicle in frame, classifies each by make and model, deduplicates repeated sightings, and persists the results into a queryable local database.
 
-The pipeline operates under a strict **local-first** constraint. All raw footage, derived assets, and database state remain on the origin machine by default. Only lightweight, derived artifacts — structured JSON metadata, cropped thumbnail images, and short highlight clips — are candidates for optional cloud synchronization. This design directly addresses the bandwidth limitations of residential coax internet connections, where upstream throughput makes uploading raw 4K footage impractical.
+The pipeline operates under a strict **local-first processing** constraint. All raw footage stays on the origin machine. The M4 Mac mini handles ingestion, inference, and database writes. Derived artifacts — structured JSON metadata, cropped thumbnails, and highlight clips — sync automatically to GCS and Firestore, powering an **always-accessible SvelteKit dashboard hosted on GCP Cloud Run**. This means the review UI, analytics, and Vast.ai job dispatch panel are available from any browser, anywhere, without needing the Mac to be actively serving requests.
 
-The project is structured for **incremental delivery**. Phase 1 delivers a fully functional, offline-capable pipeline with a premium web-based review interface. Subsequent phases introduce optional cloud sync, a remote analytics dashboard, GPU-accelerated model training via Vast.ai, and expansion into broader "curb intelligence" use cases including parking sign OCR, street sweeping detection, and hazard mapping.
+The project is structured for **incremental delivery**. Phase 1 delivers a fully functional pipeline with a GCP-hosted review interface. Subsequent phases introduce analytics dashboards, GPU-accelerated model training via Vast.ai (dispatchable from the web UI), and expansion into broader "curb intelligence" use cases including parking sign OCR, street sweeping detection, and hazard mapping.
 
 ---
 
@@ -103,15 +105,19 @@ flowchart TB
         DB --> EX
     end
 
-    subgraph Cloud["Later Phases — Cloud"]
-        OBJ[("GCS / DO Spaces")]
-        WEB["SvelteKit Dashboard"]
+    subgraph Cloud["GCP — Always Accessible"]
+        FS[("Firestore")]
+        GCS[("GCS Artifacts")]
+        CR["Cloud Run Dashboard"]
         GPU["Vast.ai GPU Fleet"]
     end
 
-    EX --> OBJ
-    OBJ --> WEB
-    GPU --> OBJ
+    EX --> GCS
+    DB -.->|"sync derived"| FS
+    GCS --> CR
+    FS --> CR
+    CR -.->|"dispatch jobs"| GPU
+    GPU --> GCS
 ```
 
 ### Acceleration Dispatch
@@ -572,7 +578,7 @@ erDiagram
 
 ## Review Interface
 
-The primary review interface is a SvelteKit 5 web application served locally. It communicates with a FastAPI backend on `localhost:8000` that reads and writes the shared SQLite database.
+The primary review interface is a SvelteKit 5 web application deployed on **GCP Cloud Run**, always accessible from any browser. It reads sighting data from Firestore and serves crop images from GCS. For local development, the same app communicates with a FastAPI backend on `localhost:8000` that reads and writes the local SQLite database. Corrections made in the hosted UI sync back to the local database on the next pipeline run.
 
 ### Design Principles
 
@@ -774,24 +780,21 @@ Raw video footage never leaves the local machine unless the user explicitly opts
 
 ## Roadmap
 
-### Phase 1 — Local Pipeline MVP *(current)*
+### Phase 1 — Local Pipeline + GCP Dashboard *(current)*
 
-USB Drive/U-Disk local transfer to Mac. Folder watcher daemon for automated ingest. Full perception pipeline: frame sampling, YOLOv8 detection, tiered make/model classification, temporal+spatial deduplication, SQLite persistence. SvelteKit review UI served on localhost with keyboard-driven correction. FastAPI REST backend. Daily export bundles in JSONL, CSV, and self-contained HTML.
+USB Drive/U-Disk local transfer to Mac. Folder watcher daemon for automated ingest. Full perception pipeline: frame sampling, YOLOv8 detection, tiered make/model classification, temporal+spatial deduplication, SQLite persistence. Derived artifacts (sighting metadata, crops, highlight clips) sync to GCS and Firestore. SvelteKit review UI deployed on GCP Cloud Run — always accessible from any browser. FastAPI REST backend runs locally and syncs results to cloud. Daily export bundles in JSONL, CSV, and self-contained HTML.
 
-### Phase 2 — Autoupload Behaviors
+### Phase 2 — Cloud Sync Automation
 
-Configurable cloud sync for derived artifacts. Three modes under evaluation:
-- **Home Wi-Fi only** — batch upload overnight on residential network
-- **Opportunistic** — JSON metadata via cellular hotspot, defer clips for Wi-Fi
-- **As-you-ride** — aggressive queued upload (battery and bandwidth tradeoff)
+Automated sync daemon running on the Mac mini. Derived artifacts push to GCS/Firestore after each pipeline run. Configurable sync triggers: immediate after processing, scheduled overnight, or manual. Raw video never syncs — only structured metadata, cropped thumbnails, and highlight clips traverse the network. Typical sync payload: 15–70 MB per ride.
 
-### Phase 3 — Analytics Dashboard
+### Phase 3 — Analytics Dashboard + Vast.ai Dispatch
 
-Deploy the SvelteKit application to Vercel or Cloudflare Pages for remote browsing. Integrate Mapbox GL or Leaflet for sighting heatmaps. Time-of-day patterns, make/model frequency analytics. Optional authentication via Cloudflare Access.
+Extend the GCP-hosted SvelteKit dashboard with analytics: Mapbox GL sighting heatmaps, time-of-day patterns, make/model frequency charts. Add a Vast.ai job dispatch panel — launch training runs on-demand directly from the web UI, monitor progress, and pull trained models back to the local Mac. Authentication via Firebase Auth or Cloudflare Access.
 
 ### Phase 4 — Active Learning via Vast.ai
 
-Export corrected labels from CurbScout database. Upload curated datasets to GCS. Fine-tune YOLOv8n-cls on Stanford Cars + CurbScout corrections on RTX 4090 instances. A/B test new model against Jordo23 baseline. Auto-export to CoreML, ONNX, and TensorRT. Model versioning with training data hash.
+Export corrected labels from CurbScout database. Upload curated datasets to GCS. Fine-tune YOLOv8n-cls on Stanford Cars + CurbScout corrections on RTX 4090 instances — dispatchable from the dashboard. A/B test new model against Jordo23 baseline. Auto-export to CoreML, ONNX, and TensorRT. Model versioning with training data hash.
 
 ### Phase 5 — Curb Intelligence
 

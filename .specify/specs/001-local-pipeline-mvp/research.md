@@ -284,34 +284,36 @@ PUT  /api/config             → Update config
 
 ## 8. Detailed Roadmap — All Phases
 
-### Phase 1 — Local Pipeline + SvelteKit Review (THIS FEATURE)
+### Phase 1 — Local Pipeline + GCP Dashboard (THIS FEATURE)
 - USB transfer → ingest → sample → detect → classify → dedupe → persist
-- SvelteKit web UI for review/correction on localhost
-- FastAPI backend serving SQLite data
+- Derived artifacts sync to GCS (crops, clips) + Firestore (sighting metadata)
+- SvelteKit review UI deployed on GCP Cloud Run — always accessible
+- FastAPI backend runs locally, syncs results to cloud after each pipeline run
 - Daily export bundles
 - Pre-trained models (Jordo23 + VehicleTypeNet), no custom training yet
 - **Timeline**: ~3 weeks solo
 
-### Phase 2 — Cloud Sync & Autoupload
-- Upload daily bundles to GCS/DO Spaces on home Wi-Fi overnight
-- Configurable: Wi-Fi only / opportunistic / manual
-- launchd scheduled job or systemd-equivalent
-- ~10–50 MB per bundle (JSON + crops, no raw video)
-- **Decision required**: Wi-Fi only vs. opportunistic vs. manual
+### Phase 2 — Cloud Sync Automation
+- Automated sync daemon on Mac mini: push derived artifacts after each run
+- Configurable triggers: immediate / scheduled overnight / manual
+- Raw video never syncs — only metadata + crops + clips (~15–70 MB/ride)
+- launchd scheduled job for overnight batch sync
 - **Timeline**: ~1 week
 
-### Phase 3 — Cloud Dashboard (SvelteKit)
-- Deploy same SvelteKit app to Vercel/Cloudflare (adapter-static)
-- Reads sightings from GCS/DO object storage
-- Add heatmaps (Mapbox GL / Leaflet) for sighting locations
-- Add analytics: most-seen makes/models, time-of-day patterns
-- Optional: basic auth or Cloudflare Access
+### Phase 3 — Analytics Dashboard + Vast.ai Dispatch
+- Extend GCP-hosted SvelteKit dashboard with analytics
+- Mapbox GL heatmaps for sighting locations
+- Time-of-day patterns, make/model frequency charts
+- Vast.ai job dispatch panel: launch training runs from the web UI
+- Monitor training progress and costs in real-time
+- Auth via Firebase Auth or Cloudflare Access
 - **Timeline**: ~1.5 weeks
 
 ### Phase 4 — Custom Model Training (Vast.ai)
 - Export corrected labels from CurbScout DB
-- Push labeled dataset to Vast.ai (curated from user corrections)
+- Push labeled dataset to GCS (curated from user corrections)
 - Fine-tune YOLOv8n-cls on Stanford Cars + CurbScout corrections
+- Training dispatchable from the hosted dashboard
 - Training recipe:
   1. Start from `yolov8n-cls.pt` (ImageNet pre-trained)
   2. First stage: fine-tune on Stanford Cars (196 classes)

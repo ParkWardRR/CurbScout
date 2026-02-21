@@ -5,27 +5,34 @@
 
 ## Summary
 
-Build a local-first Python ML pipeline + SvelteKit web UI that ingests
-Insta360 GO 3S bike ride footage via USB, detects and classifies
-vehicles using pre-trained models (Jordo23/vehicle-classifier +
-NVIDIA VehicleTypeNet), deduplicates sightings, stores everything in
-SQLite, and provides a premium dark-mode SvelteKit review UI on
-localhost with keyboard-driven correction. A FastAPI backend bridges
-the Python pipeline and the web frontend. Daily export bundles
-(JSONL + CSV + crops + HTML) complete the MVP. Everything runs
-offline on an M4 Mac mini. SwiftUI native app is deferred to Phase 8.
+Build a local-first Python ML pipeline with a GCP-hosted SvelteKit
+web UI that ingests Insta360 GO 3S bike ride footage via USB, detects
+and classifies vehicles using pre-trained models (Jordo23/vehicle-classifier +
+NVIDIA VehicleTypeNet), deduplicates sightings, and stores everything
+in SQLite locally. Derived artifacts (sightings metadata, crops,
+highlight clips) sync to GCS and Firestore, powering an always-on
+SvelteKit dashboard hosted on GCP Cloud Run. The dashboard provides
+a premium dark-mode review UI with keyboard-driven correction and
+a Vast.ai job dispatch panel for on-demand GPU training. Daily export
+bundles (JSONL + CSV + crops + HTML) are generated locally and synced.
+The M4 Mac mini handles ingestion and inference; GCP hosts the
+accessible UI; Vast.ai handles burst GPU workloads. SwiftUI native
+app is deferred to Phase 8.
 
 ## Technical Context
 
 **Language/Version**: Python 3.11+ (pipeline + FastAPI backend), TypeScript/Svelte 5 (web UI)
-**Primary Dependencies**: FastAPI, uvicorn, ultralytics, onnxruntime, coremltools, ffmpeg-python, Pillow, imagehash, pydantic (Python); SvelteKit 5, @sveltejs/adapter-node, video.js (frontend)
-**Storage**: SQLite 3 with WAL mode at `~/CurbScout/curbscout.db`
+**Primary Dependencies**: FastAPI, uvicorn, ultralytics, onnxruntime, coremltools, ffmpeg-python, Pillow, imagehash, pydantic (Python); SvelteKit 5, @sveltejs/adapter-node, video.js (frontend); google-cloud-firestore, google-cloud-storage (sync)
+**Local Storage**: SQLite 3 with WAL mode at `~/CurbScout/curbscout.db`
+**Cloud Storage**: GCS for artifacts + Firestore for sighting metadata
+**Hosting**: GCP Cloud Run (SvelteKit dashboard — always accessible)
 **Testing**: pytest (Python), vitest + Playwright (SvelteKit)
-**Target Platform**: macOS 14+ (Sonoma), M-series Apple Silicon; web UI runs in any modern browser
-**Project Type**: CLI pipeline + REST API + web app (all local)
+**Target Platform**: macOS 14+ (Sonoma), M-series Apple Silicon (pipeline); GCP Cloud Run (dashboard); any modern browser (review UI)
+**Project Type**: CLI pipeline (local) + REST API (local + cloud) + hosted web app (GCP)
 **Performance Goals**: Process 30-min ride in <10 min; detection at ~90 fps; review at <5 min for 100 sightings
-**Constraints**: Offline-only, <24 GB memory, coax uplink (no cloud dependency in MVP)
+**Constraints**: Pipeline runs offline on M4; dashboard on GCP requires internet; raw video never leaves local machine
 **Scale/Scope**: Single user, ~1-3 rides/day, ~100-500 sightings/ride
+**Vast.ai Integration**: Dashboard includes job dispatch panel — launch training runs on-demand from the web UI
 
 ## Constitution Check
 
@@ -33,12 +40,12 @@ offline on an M4 Mac mini. SwiftUI native app is deferred to Phase 8.
 
 | Principle | Status | Notes |
 |-----------|--------|-------|
-| I. Local-First | ✅ | All processing on M4; no cloud in MVP |
-| II. Privacy-by-Default | ✅ | No plate OCR in MVP; raw video stays local |
-| III. Web-First, Beautiful UX | ✅ | SvelteKit is primary UI, dark-mode, keyboard-driven |
-| IV. Solo-Developer Pragmatism | ✅ | SQLite, shell scripts, flat exports, no native app yet |
+| I. Local-First | ✅ | Pipeline processes on M4; raw video stays local; derived artifacts sync to GCP |
+| II. Privacy-by-Default | ✅ | No plate OCR in MVP; raw video never leaves local machine |
+| III. Web-First, Beautiful UX | ✅ | SvelteKit hosted on GCP Cloud Run — always accessible |
+| IV. Solo-Developer Pragmatism | ✅ | SQLite local + Firestore cloud, shell scripts, flat exports |
 | V. Pipeline Correctness | ✅ | Checksums, model versioning, idempotent runs |
-| VI. Incremental Delivery | ✅ | Phase 1 is self-contained, no cloud deps |
+| VI. Incremental Delivery | ✅ | Phase 1 pipeline runs locally; dashboard deploys to GCP |
 | VII. Test-Driven Core | ✅ | Pytest for pipeline logic, vitest for UI |
 
 ## Project Structure
