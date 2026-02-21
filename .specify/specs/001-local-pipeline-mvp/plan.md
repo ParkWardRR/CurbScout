@@ -5,35 +5,41 @@
 
 ## Summary
 
-Build a local-first Python ML pipeline with a GCP-hosted SvelteKit
-web UI that ingests Insta360 GO 3S bike ride footage via USB, detects
-and classifies vehicles using pre-trained models (Jordo23/vehicle-classifier +
-NVIDIA VehicleTypeNet), deduplicates sightings, and stores everything
-in SQLite locally. Derived artifacts (sightings metadata, crops,
-highlight clips) sync to GCS and Firestore, powering an always-on
-SvelteKit dashboard hosted on GCP Cloud Run. The dashboard provides
-a premium dark-mode review UI with keyboard-driven correction and
-a Vast.ai job dispatch panel for on-demand GPU training. Daily export
-bundles (JSONL + CSV + crops + HTML) are generated locally and synced.
-The M4 Mac mini handles ingestion and inference; GCP hosts the
-accessible UI; Vast.ai handles burst GPU workloads. SwiftUI native
-app is deferred to Phase 8.
+Build a three-tier perception system with **GCP as the central
+orchestration hub**, an M4 Mac mini as the local inference worker,
+and Vast.ai as an ephemeral GPU burst tier.
+
+The GCP layer (Cloud Run + Firestore + GCS + Cloud Tasks) hosts
+the always-on SvelteKit dashboard and job orchestration API. It
+dispatches inference jobs to the M4 Mac mini (CoreML ANE, free)
+and training/batch jobs to Vast.ai GPU instances (ephemeral,
+auto-destroying). The M4 Mac mini runs the perception pipeline
+locally — ingesting Insta360 GO 3S footage, detecting and
+classifying vehicles via CoreML — and pushes results back to GCP.
+When the user wants to train or reprocess at scale, the M4 or
+the dashboard pushes a job to GCP, which provisions an ephemeral
+Vast.ai instance, monitors it, and tears it down when complete.
+
+**Build order**: GCP orchestration layer first (dashboard +
+job dispatch + Firestore schema). Then M4 pipeline and Vast.ai
+worker in parallel, both reporting to GCP.
+
+SwiftUI native app is deferred to Phase 8.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11+ (pipeline + FastAPI backend), TypeScript/Svelte 5 (web UI)
-**Primary Dependencies**: FastAPI, uvicorn, ultralytics, onnxruntime, coremltools, ffmpeg-python, Pillow, imagehash, pydantic (Python); SvelteKit 5, @sveltejs/adapter-node, video.js (frontend); google-cloud-firestore, google-cloud-storage (sync)
+**Language/Version**: Python 3.11+ (pipeline + FastAPI), TypeScript/Svelte 5 (dashboard)
+**Primary Dependencies**: FastAPI, uvicorn, ultralytics, onnxruntime, coremltools, ffmpeg-python, Pillow, imagehash, pydantic (Python); SvelteKit 5, @sveltejs/adapter-node, video.js (frontend); google-cloud-firestore, google-cloud-storage, google-cloud-tasks (orchestration)
 **Local Storage**: SQLite 3 with WAL mode at `~/CurbScout/curbscout.db`
-**Cloud Storage**: GCS for artifacts + Firestore for sighting metadata
-**Hosting**: GCP Cloud Run (SvelteKit dashboard — always accessible)
+**Cloud Storage**: GCS for artifacts + Firestore for metadata + Cloud Tasks for job queue
+**Hosting**: GCP Cloud Run (dashboard + orchestration API — always accessible)
 **Testing**: pytest (Python), vitest + Playwright (SvelteKit)
-**Target Platform**: macOS 14+ (Sonoma), M-series Apple Silicon (pipeline); GCP Cloud Run (dashboard); any modern browser (review UI)
-**Project Type**: CLI pipeline (local) + REST API (local + cloud) + hosted web app (GCP)
-**Performance Goals**: Process 30-min ride in <10 min; detection at ~90 fps; review at <5 min for 100 sightings
-**Constraints**: Pipeline runs offline on M4; dashboard on GCP requires internet; raw video never leaves local machine
-**Cost Posture**: All daily inference on M4 CoreML (free); GCP within free tier (Cloud Run + Firestore + GCS); Vast.ai on-demand only
-**Scale/Scope**: Single user, ~1-3 rides/day, ~100-500 sightings/ride
-**Vast.ai Integration**: Dashboard includes job dispatch panel — launch training runs on-demand from the web UI
+**Target Platform**: macOS 14+ M-series (M4 worker); GCP Cloud Run (orchestrator); Vast.ai CUDA (ephemeral GPU worker)
+**Project Type**: Orchestrated multi-tier: GCP hub + local worker (M4) + burst worker (Vast.ai)
+**Performance Goals**: Process 30-min ride in <10 min on M4; detection at ~93 fps CoreML; review at <5 min for 100 sightings
+**Constraints**: Raw video never leaves M4; GCP free tier; Vast.ai ephemeral (auto-destroy)
+**Cost Posture**: CoreML inference free (owned hardware); GCP within free tier; Vast.ai on-demand only ($0 when idle)
+**Build Order**: GCP orchestration first → M4 pipeline + Vast.ai worker in parallel
 
 ## Constitution Check
 
@@ -41,12 +47,12 @@ app is deferred to Phase 8.
 
 | Principle | Status | Notes |
 |-----------|--------|-------|
-| I. Local-First | ✅ | Pipeline processes on M4; raw video stays local; derived artifacts sync to GCP |
-| II. Privacy-by-Default | ✅ | No plate OCR in MVP; raw video never leaves local machine |
-| III. Web-First, Beautiful UX | ✅ | SvelteKit hosted on GCP Cloud Run — always accessible |
-| IV. Solo-Developer Pragmatism | ✅ | SQLite local + Firestore cloud, shell scripts, flat exports |
-| V. Pipeline Correctness | ✅ | Checksums, model versioning, idempotent runs |
-| VI. Incremental Delivery | ✅ | Phase 1 pipeline runs locally; dashboard deploys to GCP |
+| I. Local-First | ✅ | Raw video + inference on M4; only derived artifacts flow to GCP |
+| II. Privacy-by-Default | ✅ | No plate OCR in MVP; raw video never leaves M4 |
+| III. Web-First, Beautiful UX | ✅ | SvelteKit on GCP Cloud Run — always accessible, orchestrates all tiers |
+| IV. Solo-Developer Pragmatism | ✅ | GCP free tier, Cloud Tasks for job dispatch, Firestore for state |
+| V. Pipeline Correctness | ✅ | Checksums, model versioning, idempotent runs, job deduplication |
+| VI. Incremental Delivery | ✅ | GCP first → M4 + Vast.ai in parallel |
 | VII. Test-Driven Core | ✅ | Pytest for pipeline logic, vitest for UI |
 
 ## Project Structure
@@ -205,11 +211,14 @@ from PromptHarbor's proven autonomous deploy kit.
 
 | Decision | Rationale | Simpler Alternative Rejected Because |
 |----------|-----------|--------------------------------------|
+| GCP as orchestration hub | Central control plane dispatches to M4 + Vast.ai; always accessible | Running orchestration on M4 means no access when Mac is off/sleeping |
+| GCP first, then workers | Dashboard + job API is the control plane; workers plug in after | Building workers first means no way to dispatch or monitor them |
+| Cloud Tasks for job queue | Free tier, durable, retries, exactly-once dispatch | Direct HTTP calls would lose jobs on worker downtime |
 | Python-only backend (no Swift) | SvelteKit UI replaces SwiftUI; entire backend is Python | Swift would require maintaining two codebases for the same DB |
 | FastAPI for REST API | Lightweight, async, auto-docs, excellent DX | Flask works but lacks async + auto OpenAPI docs |
 | Three pre-trained models | Tiered classification maximizes Day 1 accuracy | Single model would miss vehicle types when make/model confidence is low |
-| SvelteKit 5 | Svelte 5 runes for modern reactivity; reusable for Phase 3 cloud dashboard | React/Next.js is heavier and slower to iterate for a solo dev |
+| SvelteKit 5 | Svelte 5 runes for modern reactivity; reusable across GCP + local dev | React/Next.js is heavier and slower to iterate for a solo dev |
 | Multi-backend accelerator | Auto-detect CoreML/CUDA/AVX-512/NEON at runtime | Hardcoding one backend would break on Vast.ai or non-Mac platforms |
 | CoreML INT8 quantization | 38 TOPS on M4 ANE; 30% faster than FP16 | FP16 works but leaves ANE INT8 path underutilized |
-| Vast.ai training (PromptHarbor kit) | Proven autonomous deploy: bootstrap→train→export→self-destruct | Manual SSH is error-prone; autonomous saves time and prevents cost overruns |
+| Vast.ai ephemeral (auto-destroy) | Proven autonomous deploy: bootstrap→train→export→self-destruct→$0 | Persistent GPU instances would burn $ 24/7 |
 | Multi-format model export | CoreML+ONNX+TensorRT from single .pt | Single format would limit platform portability |

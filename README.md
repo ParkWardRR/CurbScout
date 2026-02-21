@@ -2,7 +2,7 @@
 
 # CurbScout
 
-**Local-first perception pipeline — ride video to structured city intelligence.**
+**GCP-orchestrated perception pipeline — ride video to structured city intelligence.**
 
 [![License: Blue Oak 1.0.0](https://img.shields.io/badge/license-Blue%20Oak%201.0.0-2D6EB5?style=for-the-badge)](https://blueoakcouncil.org/license/1.0.0)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -60,32 +60,72 @@
 
 ## Overview
 
-CurbScout is a perception pipeline purpose-built for extracting structured urban data from action camera footage. The system processes raw 4K video captured during daily cycling commutes, identifies every vehicle in frame, classifies each by make and model, deduplicates repeated sightings, and persists the results into a queryable local database.
+CurbScout is a three-tier perception system for extracting structured urban data from action camera footage. It processes raw 4K video captured during daily cycling commutes, identifies every vehicle in frame, classifies each by make and model, deduplicates repeated sightings, and persists the results into a queryable database.
 
-The pipeline operates under a strict **local-first processing** constraint. All raw footage stays on the origin machine. The M4 Mac mini handles ingestion, inference, and database writes. Derived artifacts — structured JSON metadata, cropped thumbnails, and highlight clips — sync automatically to GCS and Firestore, powering an **always-accessible SvelteKit dashboard hosted on GCP Cloud Run**. This means the review UI, analytics, and Vast.ai job dispatch panel are available from any browser, anywhere, without needing the Mac to be actively serving requests.
+The system uses a **hub-and-spoke architecture** with GCP as the central orchestration layer:
 
-The project is structured for **incremental delivery**. Phase 1 delivers a fully functional pipeline with a GCP-hosted review interface. Subsequent phases introduce analytics dashboards, GPU-accelerated model training via Vast.ai (dispatchable from the web UI), and expansion into broader "curb intelligence" use cases including parking sign OCR, street sweeping detection, and hazard mapping.
+- **GCP (Hub)** — Always-on SvelteKit dashboard + job orchestration API hosted on Cloud Run. Firestore for metadata, GCS for artifacts, Cloud Tasks for job dispatch. Accessible from any browser, anywhere.
+- **M4 Mac mini (Local Worker)** — Runs the full perception pipeline locally via CoreML ANE at zero marginal cost. Ingests camera footage, detects and classifies vehicles, pushes results back to GCP. Can also push training requests to GCP for forwarding to Vast.ai.
+- **Vast.ai (Ephemeral GPU Worker)** — Provisioned on-demand by GCP when the user dispatches a training or batch reprocessing job. Auto-destroys after completion. Never running unless explicitly requested.
+
+**Build order**: GCP orchestration first (dashboard, Firestore schema, job API). Then M4 pipeline and Vast.ai worker in parallel, both reporting to GCP.
 
 ---
 
 ## Architecture
 
-### End-to-End Dataflow
+### Three-Tier Orchestration
+
+```mermaid
+flowchart TB
+    subgraph GCP["GCP — Orchestration Hub (always on)"]
+        CR["Cloud Run: Dashboard + Job API"]
+        FS[("Firestore: Metadata")]
+        GCS[("GCS: Artifacts + Models")]
+        CT["Cloud Tasks: Job Queue"]
+        CR <--> FS
+        CR <--> GCS
+        CR --> CT
+    end
+
+    subgraph M4["M4 Mac mini — Local Worker (CoreML)"]
+        W["Watcher + Ingest"]
+        P["Pipeline: detect + classify + dedup"]
+        DB[("SQLite WAL")]
+        W --> P --> DB
+    end
+
+    subgraph VAST["Vast.ai — Ephemeral GPU Worker"]
+        BOOT["Bootstrap + Train"]
+        EXP["Export: CoreML + ONNX + TensorRT"]
+        KILL["Auto-Destroy"]
+        BOOT --> EXP --> KILL
+    end
+
+    M4 -->|"push results"| GCP
+    GCP -->|"dispatch inference jobs"| M4
+    M4 -->|"request training"| GCP
+    GCP -->|"provision + dispatch"| VAST
+    VAST -->|"upload trained models"| GCS
+    CT -->|"route jobs"| M4
+    CT -->|"route jobs"| VAST
+```
+
+### Job Flow
 
 ```mermaid
 flowchart LR
-    A["Ride Capture"] --> B["USB Transfer"]
-    B --> C["Ingest + Checksum"]
-    C --> D["Frame Sampling"]
-    D --> E["Vehicle Detection"]
-    E --> F["Crop Generation"]
-    F --> G["Make/Model Classification"]
-    G --> H["Deduplication"]
-    H --> I["SQLite Persistence"]
-    I --> J["Review UI"]
-    J --> K["Export Bundles"]
-    K --> L["Cloud Sync"]
-    K --> M["Vast.ai Training"]
+    A["Ride Capture"] --> B["USB to M4"]
+    B --> C["M4: Ingest + Pipeline (CoreML)"]
+    C --> D["M4: Push results to GCP"]
+    D --> E["GCP: Firestore + GCS"]
+    E --> F["GCP: Dashboard (review)"]
+    F --> G{"User action"}
+    G -->|"Correct labels"| E
+    G -->|"Train model"| H["GCP: Cloud Tasks"]
+    H --> I["Vast.ai: Ephemeral GPU"]
+    I --> J["Upload model to GCS"]
+    J --> K["M4: Pull new model"]
 ```
 
 ### Component Architecture
@@ -93,31 +133,33 @@ flowchart LR
 ```mermaid
 flowchart TB
     subgraph Local["M4 Mac mini — Local First"]
-        W["Folder Watcher + Ingest Daemon"]
-        P["Pipeline Runner"]
-        DB[("SQLite WAL")]
-        API["FastAPI Backend"]
-        UI["SvelteKit Review UI"]
-        EX["Exporter"]
-        W --> P --> DB
-        DB <--> API
-        API <--> UI
-        DB --> EX
+        W2["Folder Watcher + Ingest"]
+        P2["Pipeline Runner (CoreML ANE)"]
+        DB2[("SQLite WAL")]
+        SYNC["GCP Sync Daemon"]
+        W2 --> P2 --> DB2
+        DB2 --> SYNC
     end
 
-    subgraph Cloud["GCP — Always Accessible"]
-        FS[("Firestore")]
-        GCS[("GCS Artifacts")]
-        CR["Cloud Run Dashboard"]
-        GPU["Vast.ai GPU Fleet"]
+    subgraph Cloud["GCP — Always Accessible (Free Tier)"]
+        FS2[("Firestore")]
+        GCS2[("GCS Artifacts")]
+        CR2["Cloud Run: Dashboard"]
+        CT2["Cloud Tasks: Job Queue"]
     end
 
-    EX --> GCS
-    DB -.->|"sync derived"| FS
-    GCS --> CR
-    FS --> CR
-    CR -.->|"dispatch jobs"| GPU
-    GPU --> GCS
+    subgraph Burst["Vast.ai — Ephemeral"]
+        GPU["GPU Worker (auto-destroy)"]
+    end
+
+    SYNC --> GCS2
+    SYNC --> FS2
+    GCS2 --> CR2
+    FS2 --> CR2
+    CR2 --> CT2
+    CT2 -.->|"inference"| Local
+    CT2 -.->|"training"| GPU
+    GPU --> GCS2
 ```
 
 ### Acceleration Dispatch
@@ -780,41 +822,45 @@ Raw video footage never leaves the local machine unless the user explicitly opts
 
 ## Roadmap
 
-### Phase 1 — Local Pipeline + GCP Dashboard *(current)*
+### Phase 1A — GCP Orchestration Hub *(build first)*
 
-USB Drive/U-Disk local transfer to Mac. Folder watcher daemon for automated ingest. Full perception pipeline: frame sampling, YOLOv8 detection, tiered make/model classification, temporal+spatial deduplication, SQLite persistence. Derived artifacts (sighting metadata, crops, highlight clips) sync to GCS and Firestore. SvelteKit review UI deployed on GCP Cloud Run — always accessible from any browser. FastAPI REST backend runs locally and syncs results to cloud. Daily export bundles in JSONL, CSV, and self-contained HTML.
+Deploy the central control plane on GCP (free tier). SvelteKit dashboard on Cloud Run with Firestore schema for rides, sightings, corrections, and job state. GCS bucket for artifacts (crops, models, exports). Cloud Tasks queue for dispatching jobs to M4 and Vast.ai workers. Job orchestration API: create, monitor, and cancel inference and training jobs. Authentication via Firebase Auth. This is the first thing built — workers plug into it.
 
-### Phase 2 — Cloud Sync Automation
+### Phase 1B — M4 Pipeline + Vast.ai Worker *(build in parallel)*
 
-Automated sync daemon running on the Mac mini. Derived artifacts push to GCS/Firestore after each pipeline run. Configurable sync triggers: immediate after processing, scheduled overnight, or manual. Raw video never syncs — only structured metadata, cropped thumbnails, and highlight clips traverse the network. Typical sync payload: 15–70 MB per ride.
+**M4 Mac mini (local worker):**
+USB ingest from Insta360 GO 3S. Full perception pipeline: frame sampling, YOLOv8 detection (CoreML ANE), tiered classification, deduplication, SQLite persistence. GCP sync daemon pushes derived artifacts to Firestore/GCS after each pipeline run. Polls Cloud Tasks for inbound jobs from the dashboard. Can also push training requests to GCP.
 
-### Phase 3 — Analytics Dashboard + Vast.ai Dispatch
+**Vast.ai (ephemeral GPU worker):**
+Bootstrap script: install deps → download dataset from GCS → fine-tune model → export CoreML + ONNX + TensorRT → upload to GCS → auto-destroy. Provisioned by GCP Cloud Tasks when user dispatches a training job from the dashboard. Never running unless explicitly requested. Auto-kill safety guard (12h max).
 
-Extend the GCP-hosted SvelteKit dashboard with analytics: Mapbox GL sighting heatmaps, time-of-day patterns, make/model frequency charts. Add a Vast.ai job dispatch panel — launch training runs on-demand directly from the web UI, monitor progress, and pull trained models back to the local Mac. Authentication via Firebase Auth or Cloudflare Access.
+### Phase 2 — Analytics + Job Monitoring
 
-### Phase 4 — Active Learning via Vast.ai
+Extend the GCP dashboard with analytics: Mapbox GL sighting heatmaps, time-of-day patterns, make/model frequency charts. Real-time job monitoring panel: see active M4 pipeline runs and Vast.ai training jobs, view logs, estimated completion, and costs. Authentication via Firebase Auth or Cloudflare Access.
 
-Export corrected labels from CurbScout database. Upload curated datasets to GCS. Fine-tune YOLOv8n-cls on Stanford Cars + CurbScout corrections on RTX 4090 instances — dispatchable from the dashboard. A/B test new model against Jordo23 baseline. Auto-export to CoreML, ONNX, and TensorRT. Model versioning with training data hash.
+### Phase 3 — Active Learning Pipeline
 
-### Phase 5 — Curb Intelligence
+Export corrected labels from Firestore. Upload curated datasets to GCS. Dispatch fine-tuning jobs to Vast.ai from the dashboard: RTX 4090 instances, Stanford Cars + CurbScout corrections. A/B test new model against Jordo23 baseline. Auto-export to CoreML, ONNX, and TensorRT. M4 pulls new models from GCS automatically.
 
-- **5A: Parking Sign OCR** — YOLOv8 sign detector + PaddleOCR for text extraction. Parse time windows and restrictions. Santa Monica municipal code integration for "can I park here?"
-- **5B: Hazard Mapping** — bike lane obstructions, potholes, construction zones. Temporal change detection across rides on the same route.
-- **5C: Storefront OCR** — track business changes on frequently ridden routes.
+### Phase 4 — Curb Intelligence
 
-All curb intelligence modules reuse the existing event timeline, evidence asset, and human correction database architecture.
+- **4A: Parking Sign OCR** — YOLOv8 sign detector + PaddleOCR for text extraction. Parse time windows and restrictions. Santa Monica municipal code integration for "can I park here?"
+- **4B: Hazard Mapping** — bike lane obstructions, potholes, construction zones. Temporal change detection across rides on the same route.
+- **4C: Storefront OCR** — track business changes on frequently ridden routes.
 
-### Phase 6 — Active Learning Loop
+All curb intelligence modules reuse the existing event timeline, evidence asset, and human correction database architecture. Jobs dispatch through GCP to M4 for inference.
 
-Automated correction-to-training pipeline: user corrections auto-queue for the next training batch. Semi-automated Vast.ai training runs. Model versioning with data lineage tracking.
+### Phase 5 — Active Learning Loop
 
-### Phase 7 — Multi-Device Collaboration
+Automated correction-to-training pipeline: user corrections in Firestore auto-queue for the next training batch. GCP dispatches Vast.ai training jobs. Model versioning with data lineage tracking. New models auto-deploy to M4 via GCS.
 
-Database sync across multiple Macs via CRDTs or SQLite changeset extension. Multiple riders contributing to a shared sighting dataset. Multi-user dashboard views with per-user review progress.
+### Phase 6 — Multi-Device Collaboration
 
-### Phase 8 — Native macOS Application
+Multiple M4 Macs or other workers register with the GCP hub. Database sync via Firestore (replaces CRDTs). Multiple riders contributing to a shared sighting dataset. Multi-user dashboard views with per-user review progress.
 
-Port the SvelteKit review UI to a native SwiftUI application. SwiftData persistence layer reading the shared SQLite database. Native AVFoundation video scrubber. Menu bar status indicator for pipeline progress. Auto-launch on camera connection via IOKit/DiskArbitration. This phase is deferred to the end of the roadmap — the web-first SvelteKit interface serves as the primary review experience and is reusable across platforms.
+### Phase 7 — Native macOS Application
+
+Port the SvelteKit review UI to a native SwiftUI application. SwiftData persistence layer reading the local SQLite database. Native AVFoundation video scrubber. Menu bar status indicator for pipeline progress. Auto-launch on camera connection via IOKit/DiskArbitration. Deferred to end — the GCP-hosted SvelteKit dashboard serves as the primary review experience.
 
 ---
 
