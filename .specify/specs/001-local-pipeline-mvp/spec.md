@@ -3,7 +3,7 @@
 **Feature Branch**: `001-local-pipeline-mvp`
 **Created**: 2026-02-21
 **Status**: Approved
-**Input**: User description: "Build a local-first macOS app that ingests Insta360 GO 3S ride videos via USB Drive/U-Disk at home, extracts car sightings (make/model now, best-effort year/trim later), stores in SQLite, provides SwiftUI review/correction UI, and exports a daily report bundle (JSONL/CSV + crops + highlight clips). Cloud sync and Vast.ai training are later phases."
+**Input**: User description: "Build a three-tier perception system. GCP is the central orchestration hub handling the review UI on Cloud Run and job dispatch via Cloud Tasks. An M4 Mac mini handles local ingest and zero-cost CoreML inference, syncing derived artifacts to GCP. Vast.ai provides ephemeral GPU burst training on-demand, orchestrated by GCP."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -75,11 +75,11 @@ Multiple detections of the same physical car across consecutive frames are conso
 
 ### User Story 5 — SvelteKit Review & Correction Web UI (Priority: P1)
 
-The user opens `http://localhost:5173` in their browser and sees today's ride with a video player, a scrollable grid of vehicle crops, and sighting details. For each sighting, the user can: confirm the label with one keystroke (⏎), correct the make/model via a searchable dropdown, flag as "not a car" (delete), or skip. Corrections are stored in the CORRECTION table with a timestamp. The web UI communicates with a local Python/FastAPI backend that reads/writes the shared SQLite database.
+The user opens the SvelteKit application hosted on **GCP Cloud Run** and sees today's ride with a video player, a scrollable grid of vehicle crops, and sighting details fetched from Firestore. For each sighting, the user can: confirm the label with one keystroke (⏎), correct the make/model via a searchable dropdown, flag as "not a car" (delete), or skip. Corrections are stored in Firestore. The web UI communicates with a Cloud Run API that can also dispatch training jobs to Vast.ai or inference jobs to the M4.
 
-**Why this priority**: Human-in-the-loop corrections are what make the data trustworthy and feed the future training loop. A web UI ships faster than native Swift and is cross-platform.
+**Why this priority**: Human-in-the-loop corrections are what make the data trustworthy. The GCP-hosted UI ensures the dashboard is always accessible from anywhere, even if the origin Mac is asleep.
 
-**Independent Test**: Open `localhost:5173` after a pipeline run → scroll through sightings → confirm 5, correct 2, delete 1 → verify CORRECTION rows are created with correct `corrected_fields` and `note` values.
+**Independent Test**: Open the Cloud Run URL after the M4 pipeline syncs data → scroll through sightings → confirm 5, correct 2, delete 1 → verify Firestore documents are updated with correct `corrected_fields` and `note` values.
 
 **Acceptance Scenarios**:
 
@@ -127,13 +127,13 @@ At any time, the user can export a daily report bundle to `~/CurbScout/exports/Y
 - **FR-006**: System MUST classify detected vehicles by make and model with a confidence score.
 - **FR-007**: System MUST flag classifications with impossible year/badge combinations for review.
 - **FR-008**: System MUST deduplicate detections of the same physical car across frames into a single sighting.
-- **FR-009**: System MUST persist all data (rides, videos, frames, detections, sightings, corrections) in a local SQLite database.
-- **FR-010**: System MUST provide a SvelteKit web UI served locally for reviewing and correcting sightings, accessible at `localhost:5173`.
+- **FR-009**: System MUST persist raw data in a local SQLite database, and sync derived metadata to Firestore / crops to GCS.
+- **FR-010**: System MUST provide a SvelteKit web UI deployed on GCP Cloud Run for reviewing and correcting sightings.
 - **FR-011**: System MUST support one-keystroke confirm and searchable-dropdown correction in the review UI.
 - **FR-012**: System MUST support soft deletion (flag, not data destruction) of false-positive sightings.
-- **FR-013**: System MUST export daily report bundles as JSONL + CSV + crops + HTML.
-- **FR-014**: System MUST log all pipeline stages with inputs, outputs, timestamps, and model versions for auditability.
-- **FR-015**: System MUST operate fully offline — no internet connection required for any Phase 1 feature.
+- **FR-013**: System MUST export daily report bundles as JSONL + CSV + crops + HTML from the local Mac.
+- **FR-014**: System MUST orchestrate jobs via GCP Cloud Tasks, allowing dispatch to the M4 or Vast.ai.
+- **FR-015**: System MUST run heavy inference locally on the M4 Mac mini while keeping the UI globally accessible via GCP.
 
 ### Key Entities
 
@@ -154,5 +154,5 @@ At any time, the user can export a daily report bundle to `~/CurbScout/exports/Y
 - **SC-004**: Deduplication reduces raw detection count by ≥ 80% (e.g., 500 detections → ≤ 100 sightings for a typical ride).
 - **SC-005**: User can review and correct/confirm all sightings from a 30-minute ride in under 5 minutes using keyboard shortcuts.
 - **SC-006**: Daily export bundle generates a valid, self-contained report that opens correctly in any modern browser.
-- **SC-007**: The entire system operates offline on the M4 Mac mini without any cloud dependency.
-- **SC-008**: Re-processing the same video with the same model version produces identical sightings (deterministic pipeline).
+- **SC-007**: The review UI is globally accessible via GCP Cloud Run with < 1s page load times.
+- **SC-008**: The M4 Mac mini pipeline pushes results to GCP automatically and gracefully handles network disconnects.
