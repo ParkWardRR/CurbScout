@@ -820,17 +820,41 @@ Port the SvelteKit review UI to a native SwiftUI application. SwiftData persiste
 
 ## Cost Analysis
 
-### Local Pipeline (Phase 1)
+### Design Principle: Near-Zero Ongoing Cost
 
-| Item | Cost | Frequency |
+All daily inference runs on the M4 Mac mini via CoreML — hardware the user already owns. GCP services stay within free tier limits. Vast.ai GPU instances are provisioned on-demand only when the user actively chooses to train a model, and self-destruct immediately after.
+
+### Local Inference (Daily — Free)
+
+| Resource | Handles | Cost |
 |:---|:---|:---|
-| M4 Mac mini (24 GB) | Existing hardware | One-time |
-| Insta360 GO 3S | ~$330 | One-time |
-| Quick Reader (optional) | ~$45 | One-time |
-| Electricity (~10W idle) | ~$1/month | Ongoing |
-| **Total Phase 1** | **~$0/month ongoing** | — |
+| M4 Mac mini CoreML ANE | All detection + classification (~93 FPS) | Existing hardware |
+| M4 Mac mini CPU/GPU | Frame extraction, hashing, database I/O | Existing hardware |
+| Electricity (~10W) | Always-on pipeline | ~$1/month |
 
-### GPU Training (Phase 4+)
+### GCP (Always-On Dashboard — Free Tier)
+
+| Service | Free Tier | CurbScout Usage | Monthly Cost |
+|:---|:---|:---|:---|
+| **Cloud Run** | 2M requests + 360K vCPU-sec/mo | Dashboard (light traffic, single user) | **$0** |
+| **Firestore** | 1 GiB storage + 50K reads/day | ~500 sightings/day, ~100 rides/month | **$0** |
+| **GCS** | 5 GB standard storage | ~5 GB derived artifacts | **$0** |
+| **GCS egress** | 1 GB/month to internet | Crop images served to dashboard | **$0** |
+| **Total GCP** | — | — | **$0/month** |
+
+> **Note**: At single-user scale (~1–3 rides/day), CurbScout stays well within GCP free tier. If usage exceeds free tier, estimated overflow is <$1/month.
+
+### Hardware (One-Time)
+
+| Item | Cost |
+|:---|:---|
+| M4 Mac mini (24 GB) | Existing hardware |
+| Insta360 GO 3S | ~$330 |
+| Quick Reader (optional) | ~$45 |
+
+### Vast.ai GPU Training (On-Demand Only)
+
+GPU instances are **never running** unless the user explicitly dispatches a training job from the dashboard. Instances auto-destroy after training completes.
 
 | GPU | Hourly Rate | Time per Training Run | Cost per Run |
 |:---|:---|:---|:---|
@@ -838,12 +862,15 @@ Port the SvelteKit review UI to a native SwiftUI application. SwiftData persiste
 | RTX 3090 | $0.11–0.16 | 4–5 hours | **$0.55–0.80** |
 | A100 80 GB | $0.50–0.80 | 1.5–2 hours | **$1.00–1.60** |
 
-### Cloud Storage (Phase 2+)
+Typical usage: 1–2 training runs per month = **$1–3/month** when actively iterating on models. **$0/month** otherwise.
 
-| Provider | Tier | Monthly Estimate |
-|:---|:---|:---|
-| GCS Standard | ~5 GB derived artifacts | ~$0.10/month |
-| DigitalOcean Spaces | ~5 GB derived artifacts | ~$5/month (includes CDN) |
+### Total Monthly Cost
+
+| Scenario | Monthly Cost |
+|:---|:---|
+| Daily rides, no training | **~$1** (electricity only) |
+| Daily rides + 1 training run | **~$2–3** |
+| Daily rides + weekly training | **~$5–7** |
 
 ---
 

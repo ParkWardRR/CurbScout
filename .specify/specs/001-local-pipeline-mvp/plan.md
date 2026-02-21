@@ -31,6 +31,7 @@ app is deferred to Phase 8.
 **Project Type**: CLI pipeline (local) + REST API (local + cloud) + hosted web app (GCP)
 **Performance Goals**: Process 30-min ride in <10 min; detection at ~90 fps; review at <5 min for 100 sightings
 **Constraints**: Pipeline runs offline on M4; dashboard on GCP requires internet; raw video never leaves local machine
+**Cost Posture**: All daily inference on M4 CoreML (free); GCP within free tier (Cloud Run + Firestore + GCS); Vast.ai on-demand only
 **Scale/Scope**: Single user, ~1-3 rides/day, ~100-500 sightings/ride
 **Vast.ai Integration**: Dashboard includes job dispatch panel — launch training runs on-demand from the web UI
 
