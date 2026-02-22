@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isWorker() {
+      // Workers authenticate via API key header; server-side endpoints
+      // use the Firebase Admin SDK which bypasses these rules.
+      return request.auth != null;
+    }
+
+    // ── Rides ──
+    match /rides/{rideId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    // ── Videos ──
+    match /videos/{videoId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    // ── Sightings ──
+    match /sightings/{sightingId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      // Soft-delete only (set deleted=true), no hard deletes
+      allow delete: if false;
+    }
+
+    // ── Corrections ──
+    match /corrections/{correctionId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      // Corrections are immutable once written
+      allow update, delete: if false;
+    }
+
+    // ── Jobs ──
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    // ── Models (Active Learning) ──
+    match /models/{modelId} {
+      allow read: if true;
+      // Only server-side (Admin SDK) can write model versions
+      allow write: if false;
+    }
+
+    // ── Workers (Fleet) ──
+    match /workers/{workerId} {
+      allow read: if true;
+      // Only server-side (Admin SDK) can register/update workers
+      allow write: if false;
+    }
+  }
+}

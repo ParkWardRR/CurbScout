@@ -910,6 +910,59 @@ SwiftUI app with NavigationSplitView, LazyVGrid sighting review, AVFoundation vi
 
 ---
 
+## DevOps & Infrastructure
+
+### CI/CD
+
+GitHub Actions pipelines in `.github/workflows/`:
+
+| Workflow | Trigger | What It Does |
+|---|---|---|
+| `ci.yml` | Push/PR to `main` | Svelte type check, Python ruff lint, Docker build verification |
+| `deploy.yml` | Push to `main` (web/ changes) | Build Docker image → push to Artifact Registry → deploy to Cloud Run |
+
+### Local Development
+
+```bash
+# Full stack with Firebase Emulators
+docker compose up --build
+
+# Or run components individually
+cd web && npm run dev          # Dashboard at localhost:5173
+cd pipeline && python main.py  # Pipeline (one-shot)
+cd pipeline && python main.py --daemon  # Pipeline (continuous)
+```
+
+### GCP Infrastructure Setup
+
+```bash
+# One-time provisioning (requires gcloud CLI)
+./scripts/setup-gcp-infra.sh
+```
+
+Provisions: Cloud Tasks queues (m4-inference, vast-training), Cloud Scheduler (auto-train every 4h), Artifact Registry, and deploys Firestore rules/indexes.
+
+### M4 Worker Auto-Start
+
+```bash
+# Install the launchd daemon (auto-starts on boot, restarts on crash)
+cp scripts/com.curbscout.pipeline.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.curbscout.pipeline.plist
+```
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in real values. Key variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `GCP_HUB_URL` | Cloud Run dashboard URL | `http://localhost:5173` |
+| `WORKER_API_KEY` | M4 ↔ Hub auth | `dev-worker-key` |
+| `AUTO_TRAIN_THRESHOLD` | Min corrections for auto-train | `100` |
+| `PUBLIC_MAPBOX_TOKEN` | Analytics map | *(required)* |
+
+---
+
 ## Cost Analysis
 
 ### Design Principle: Near-Zero Ongoing Cost
