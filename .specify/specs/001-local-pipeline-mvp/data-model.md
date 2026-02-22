@@ -138,13 +138,11 @@ INSERT INTO _schema_meta (key, value) VALUES ('app_name', 'CurbScout');
 4. **Classification**: INSERT into SIGHTING, UPDATE DETECTION.sighting_id.
 5. **Dedup**: UPDATE DETECTION.sighting_id to merge detections → sightings.
 
-### FastAPI Backend (Reader + Correction Writer)
-1. **Browse Rides**: SELECT from RIDE ORDER BY start_ts DESC.
-2. **Ride Detail**: SELECT SIGHTING WHERE ride_id = ? ORDER BY timestamp.
-3. **Review Queue**: SELECT SIGHTING WHERE review_status = 'pending'.
-4. **Apply Correction**: INSERT into CORRECTION, UPDATE SIGHTING fields.
-5. **Export**: SELECT all SIGHTING + CORRECTION for a given ride/date.
-6. **Serve Assets**: Stream crop images and video files via HTTP.
+### GCP Sync Daemon (Reader) & Local API
+1. **Sync to Firestore**: Query recent/un-synced `RIDE` and `SIGHTING` records, push to GCP Firestore.
+2. **Sync to GCS**: Push `FRAME_ASSET` (crops) to GCS bucket for global accessibility.
+3. **Local Browse**: Local API can still serve SELECT from RIDE/SIGHTING for offline debugging.
+4. **Pull Corrections**: Sync daemon polls Firestore for `CORRECTION` records created via the Cloud Run UI and applies updates to the local `SIGHTING` rows.
 
 ### Note on SwiftData
 - SwiftData is deferred to Phase 8 (native macOS app).
