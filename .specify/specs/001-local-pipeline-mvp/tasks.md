@@ -70,10 +70,10 @@
 
 **Purpose**: Close the loop between user corrections and model training.
 
-- [ ] T028 Export corrected labels from Firestore into training dataset format (YOLO classification).
-- [ ] T029 Build UI panel to trigger Vast.ai fine-tuning directly from the dashboard.
-- [ ] T030 Implement A/B testing framework to compare new Vast.ai model against baseline on held-out data.
-- [ ] T031 Implement auto-download on M4: sync daemon periodically pulls new CoreML models from GCS.
+- [x] T028 Export corrected labels from Firestore into training dataset format (YOLO classification).
+- [x] T029 Build UI panel to trigger Vast.ai fine-tuning directly from the dashboard.
+- [x] T030 Implement A/B testing framework to compare new Vast.ai model against baseline on held-out data.
+- [x] T031 Implement auto-download on M4: sync daemon periodically pulls new CoreML models from GCS.
 
 ---
 
@@ -81,8 +81,8 @@
 
 - [x] T032 Update README with new architecture and cost analysis (completed).
 - [x] T033 Update CONTRIBUTING.md (completed).
-- [ ] T034 Implement structured JSON logging across GCP, M4, and Vast.ai.
-- [ ] T035 Create `scripts/run-pipeline.sh` for easy M4 local testing.
+- [x] T034 Implement structured JSON logging across GCP, M4, and Vast.ai.
+- [x] T035 Create `scripts/run-pipeline.sh` for easy M4 local testing.
 
 ---
 
