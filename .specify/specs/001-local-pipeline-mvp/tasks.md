@@ -17,7 +17,7 @@
 - [x] T004 Implement SvelteKit API endpoints (`web/src/routes/api/`) to handle incoming data syncs from M4 workers and serve the UI.
 - [x] T005 Implement Cloud Tasks integration to dispatch inference jobs to M4 and training jobs to Vast.ai.
 - [x] T006 Implement Cloud Run deployment pipeline for the SvelteKit dashboard.
-- [ ] T007 Build the Review UI (`web/src/routes/rides/[id]/review`): sighting grid, keyboard shortcuts (confirm, correct, delete).
+- [x] T007 Build the Review UI (`web/src/routes/rides/[id]/review`): sighting grid, keyboard shortcuts (confirm, correct, delete).
 - [x] T008 Build the Job Dashboard UI: monitor active pipeline runs on M4 and training runs on Vast.ai.
 
 **Checkpoint**: GCP Cloud Run dashboard is live. Firestore database is ready to accept data. Job queues are configured.
@@ -30,10 +30,10 @@
 
 **Purpose**: High-performance local inference using CoreML ANE, syncing derived results to GCP.
 
-- [ ] T009 Create Python project `pipeline/pyproject.toml`. Dependencies: fastapi, ultralytics>=8.0, onnxruntime, coremltools, ffmpeg-python, Pillow, imagehash.
-- [ ] T010 Implement CoreML accelerator module: `pipeline/curbscout/accelerator.py` for ANE processing via `coremltools`.
-- [ ] T011 Implement Video Ingest: `pipeline/curbscout/ingest.py` to copy MP4s, compute checksums, and extract metadata.
-- [ ] T012 Implement Frame Sampling: `pipeline/curbscout/sampler.py` to extract 2fps keyframes using VideoToolbox.
+- [x] T009 Create Python project `pipeline/pyproject.toml`. Dependencies: fastapi, ultralytics>=8.0, onnxruntime, coremltools, ffmpeg-python, Pillow, imagehash.
+- [x] T010 Implement CoreML accelerator module: `pipeline/curbscout/accelerator.py` for ANE processing via `coremltools`.
+- [x] T011 Implement Video Ingest: `pipeline/curbscout/ingest.py` to copy MP4s, compute checksums, and extract metadata.
+- [x] T012 Implement Frame Sampling: `pipeline/curbscout/sampler.py` to extract 2fps keyframes using VideoToolbox.
 - [ ] T013 Implement Vehicle Detection: run YOLOv8n (CoreML) to extract crops and bounding boxes.
 - [ ] T014 Implement Classification: run Jordo23 EfficientNet (CoreML) and VehicleTypeNet fallback on crops.
 - [ ] T015 Implement Deduplication: temporal, spatial (IoU), and perceptual hash grouping.
