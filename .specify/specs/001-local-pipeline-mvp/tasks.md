@@ -44,12 +44,12 @@
 
 **Purpose**: Autonomous burst training on renting GPUs, tearing down immediately upon completion.
 
-- [ ] T018 Implement `pipeline/curbscout/vast_client.py`: Python wrapper to interact with Vast.ai API (search, launch, destroy).
-- [ ] T019 Create Bootstrap Script (`deploy/bootstrap_training.sh`): installs deps, downloads dataset from GCS.
-- [ ] T020 Create Training Script: fine-tunes YOLOv8n-cls on Stanford Cars + CurbScout corrections.
-- [ ] T021 Create Export Script: converts trained `best.pt` to CoreML INT8, ONNX FP32, and TensorRT FP16.
-- [ ] T022 Create Upload & Teardown Script: pushes models to GCS, signals completion to Firestore, and destroys the Vast.ai instance automatically.
-- [ ] T023 Implement Auto-Kill Safety: hard timeout TTL script (max 12h) to prevent runaway costs.
+- [x] T018 Implement Vast.ai API Client (`pipeline/curbscout/vast_client.py`): functions to search offers, launch instance with setup script, and destroy instance.
+- [x] T019 Create Bootstrap Script (`deploy/bootstrap_training.sh`): installs YOLOv8, CoreML/ONNX dependencies, downloads dataset from GCS.
+- [x] T020 Create Training Script: fine-tunes YOLOv8n-cls on Stanford Cars + CurbScout corrections.
+- [x] T021 Create Export Script: converts trained `best.pt` to CoreML INT8, ONNX FP32, and TensorRT FP16.
+- [x] T022 Create Upload & Teardown Script: pushes models to GCS, signals completion to Firestore, and destroys the Vast.ai instance automatically.
+- [x] T023 Implement Auto-Kill Safety: hard timeout TTL script (max 12h) to prevent runaway costs.
 
 **Checkpoint**: M4 pipeline runs end-to-end and pushes sightings to GCP. Vast.ai bootstrap launches, trains, exports, and self-destructs.
 
