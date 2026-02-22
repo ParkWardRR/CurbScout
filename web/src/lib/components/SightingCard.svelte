@@ -63,13 +63,25 @@
     </div>
 
     <div class="details">
-        <h3 class="title">
-            {sighting.predicted_make}
-            {sighting.predicted_model}
-        </h3>
-        <p class="text-small text-muted">
-            {sighting.predicted_year || "Unknown Year"}
-        </p>
+        {#if sighting.predicted_make === "parking_sign"}
+            <h3 class="title">Parking Sign</h3>
+            <div class="text-small text-muted sign-text">
+                {sighting.predicted_model}
+            </div>
+        {:else if sighting.predicted_make === "hazard"}
+            <h3 class="title penalty-text flex items-center gap-2">
+                ⚠️ {sighting.predicted_model.replace(/_/g, " ")}
+            </h3>
+            <p class="text-small text-muted">Awaiting Action</p>
+        {:else}
+            <h3 class="title">
+                {sighting.predicted_make}
+                {sighting.predicted_model}
+            </h3>
+            <p class="text-small text-muted">
+                {sighting.predicted_year || "Unknown Year"}
+            </p>
+        {/if}
 
         <div class="flex items-center justify-between mt-2">
             <span class="badge {confLevel}">
@@ -150,6 +162,21 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        text-transform: capitalize;
+    }
+
+    .sign-text {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        line-height: 1.4;
+        font-family: monospace;
+    }
+
+    .penalty-text {
+        color: var(--status-red, hsl(0, 80%, 60%));
     }
 
     .mt-2 {

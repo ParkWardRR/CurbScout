@@ -55,6 +55,9 @@ def classify_vehicle(crop_path: str, classifier_model) -> dict:
         'year_confidence': 'medium'
     }
 
+from .ocr import process_sign_crop
+from .rules import parse_parking_rules
+
 def get_unclassified_detections() -> List[dict]:
     """Find DETECTION records without an associated SIGHTING."""
     conn = get_connection()
@@ -82,23 +85,60 @@ def run_classification_batch():
     conn = get_connection()
     
     now_iso = datetime.datetime.utcnow().isoformat() + 'Z'
-    logger.info(f"Classifying {len(detections)} crops...")
+    logger.info(f"Classifying {len(detections)} crops across Intelligence engines...")
     
     with transaction(conn) as t:
+        import random
         for det in detections:
-            preds = classify_vehicle(det['crop_path'], clf)
-            
-            # Sanity check
-            sanity_warn, warn_text = check_sanity(preds['make'], preds['model'], preds['year'])
-            
             sighting_id = str(uuid.uuid4())
+            det_class = det.get('class', 'car')
             
-            # Predict a timestamp for the sighting by assuming video start time + offset
-            # (In a rigorous system we'd join Video.start_ts, but for MVP scaffolding we use now)
-            
-            import random
             mock_lat = 37.7749 + (random.uniform(-0.05, 0.05))
             mock_lng = -122.4194 + (random.uniform(-0.05, 0.05))
+            
+            # Default payload structure
+            s_make = "Unknown"
+            s_model = "Unknown"
+            s_year = None
+            s_conf = 1.0
+            y_conf = "none"
+            s_mod_ver = "coreml-pipeline-v1"
+            sanity_warn = False
+            warn_text = None
+            attrs_json = "{}"
+            
+            # Intelligence Forking
+            if det_class == 'parking_sign':
+                # Route to Phase 4a OCR Engine
+                raw_text = process_sign_crop(det['crop_path'])
+                rules = parse_parking_rules(raw_text)
+                
+                s_make = "parking_sign"
+                s_model = raw_text[:50].replace('\n', ' ') if raw_text else "No Text Detected"
+                s_conf = 0.95
+                y_conf = "high"
+                attrs_json = json.dumps(rules)
+                
+            elif det_class in ['pothole', 'bike_lane_obstruction']:
+                # Route to Phase 4b Hazard Engine
+                s_make = "hazard"
+                s_model = det_class
+                s_conf = 0.92
+                y_conf = "high"
+                if det_class == 'bike_lane_obstruction':
+                    sanity_warn = True
+                    warn_text = "Bike Lane Blocked"
+                    
+            else:
+                # Standard Phase 1 Vehicle Classification
+                preds = classify_vehicle(det['crop_path'], clf)
+                sanity_warn, warn_text = check_sanity(preds['make'], preds['model'], preds['year'])
+                s_make = preds['make']
+                s_model = preds['model']
+                s_year = preds['year']
+                s_conf = preds['confidence']
+                y_conf = preds['year_confidence']
+                s_mod_ver = 'jordo23-effnet-b4-mock'
             
             t.execute('''
                 INSERT INTO SIGHTING (
@@ -106,15 +146,15 @@ def run_classification_batch():
                     predicted_make, predicted_model, predicted_year, 
                     classification_confidence, year_confidence, classifier_model_ver,
                     needs_review, sanity_warning, sanity_warning_text, review_status,
-                    lat, lng,
+                    lat, lng, attrs_json,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'pending', ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'pending', ?, ?, ?, ?, ?)
             ''', (
                 sighting_id, det['ride_id'], det['frame_asset_id'], now_iso,
-                preds['make'], preds['model'], preds['year'],
-                preds['confidence'], preds['year_confidence'], 'jordo23-effnet-b4-mock',
+                s_make, s_model, s_year,
+                s_conf, y_conf, s_mod_ver,
                 sanity_warn, warn_text,
-                mock_lat, mock_lng,
+                mock_lat, mock_lng, attrs_json,
                 now_iso, now_iso
             ))
             

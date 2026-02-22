@@ -101,29 +101,42 @@
         });
 
         map.on("load", () => {
-            const geojson: GeoJSON.FeatureCollection = {
-                type: "FeatureCollection",
-                features: data.sightings
-                    .filter((s: Sighting) => s.lat && s.lng)
-                    .map((s: Sighting) => ({
+            const vehicles = data.sightings.filter(
+                (s: Sighting) =>
+                    s.lat &&
+                    s.lng &&
+                    s.predicted_make !== "hazard" &&
+                    s.predicted_make !== "parking_sign",
+            );
+            const hazards = data.sightings.filter(
+                (s: Sighting) =>
+                    s.lat && s.lng && s.predicted_make === "hazard",
+            );
+            const signs = data.sightings.filter(
+                (s: Sighting) =>
+                    s.lat && s.lng && s.predicted_make === "parking_sign",
+            );
+
+            // --- VEHICLES HEATMAP ---
+            map.addSource("vehicles", {
+                type: "geojson",
+                data: {
+                    type: "FeatureCollection",
+                    features: vehicles.map((s: Sighting) => ({
                         type: "Feature",
                         geometry: {
                             type: "Point",
                             coordinates: [s.lng!, s.lat!],
                         },
-                        properties: { class: s.predicted_make },
+                        properties: { class: s.predicted_model },
                     })) as any,
-            };
-
-            map.addSource("sightings", {
-                type: "geojson",
-                data: geojson,
+                },
             });
 
             map.addLayer({
-                id: "sightings-heat",
+                id: "vehicles-heat",
                 type: "heatmap",
-                source: "sightings",
+                source: "vehicles",
                 maxzoom: 15,
                 paint: {
                     "heatmap-weight": 1,
@@ -161,6 +174,62 @@
                         20,
                     ],
                     "heatmap-opacity": 0.8,
+                },
+            });
+
+            // --- HAZARDS PINS ---
+            map.addSource("hazards", {
+                type: "geojson",
+                data: {
+                    type: "FeatureCollection",
+                    features: hazards.map((s: Sighting) => ({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [s.lng!, s.lat!],
+                        },
+                        properties: { title: s.predicted_model },
+                    })) as any,
+                },
+            });
+
+            map.addLayer({
+                id: "hazards-points",
+                type: "circle",
+                source: "hazards",
+                paint: {
+                    "circle-color": "hsl(0, 80%, 60%)", // RED
+                    "circle-radius": 6,
+                    "circle-stroke-width": 2,
+                    "circle-stroke-color": "#ffffff",
+                },
+            });
+
+            // --- PARKING SIGNS ---
+            map.addSource("signs", {
+                type: "geojson",
+                data: {
+                    type: "FeatureCollection",
+                    features: signs.map((s: Sighting) => ({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [s.lng!, s.lat!],
+                        },
+                        properties: { title: s.predicted_model },
+                    })) as any,
+                },
+            });
+
+            map.addLayer({
+                id: "signs-points",
+                type: "circle",
+                source: "signs",
+                paint: {
+                    "circle-color": "hsl(140, 60%, 50%)", // GREEN
+                    "circle-radius": 5,
+                    "circle-stroke-width": 1,
+                    "circle-stroke-color": "#ffffff",
                 },
             });
         });
