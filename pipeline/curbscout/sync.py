@@ -11,6 +11,11 @@ GCS_BUCKET = os.environ.get("GCS_BUCKET", "curbscout-artifacts")
 # Assumes Cloud Run is deployed at this endpoint
 GCP_HUB_URL = os.environ.get("GCP_HUB_URL", "http://localhost:5173") 
 WORKER_API_KEY = os.environ.get("WORKER_API_KEY", "dev-worker-key")
+WORKER_ID = os.environ.get("WORKER_ID", f"m4-{os.uname().nodename}")
+
+def get_worker_id() -> str:
+    """Generate a stable worker identifier from environment or hostname."""
+    return WORKER_ID
 
 def sync_to_gcs():
     """
@@ -76,7 +81,8 @@ def sync_to_firestore():
     payload = {
         "rides": rides,
         "videos": [],
-        "sightings": sightings
+        "sightings": sightings,
+        "worker_id": get_worker_id()
     }
     
     sync_endpoint = f"{GCP_HUB_URL}/api/sync"
@@ -104,13 +110,52 @@ def pull_corrections():
     Pull correction diffs applied via the SvelteKit dashboard from Firestore.
     """
     logger.info("Polling for remote Corrections from Firestore... (Stub)")
-    
+
+def register_worker():
+    """Register this M4 worker with the GCP Hub fleet registry."""
+    import platform
+    worker_id = get_worker_id()
+    payload = {
+        "id": worker_id,
+        "hostname": os.uname().nodename,
+        "hardware": platform.processor() or "Apple Silicon",
+        "os_version": platform.platform(),
+        "capabilities": ["inference"]
+    }
+    try:
+        res = httpx.post(
+            f"{GCP_HUB_URL}/api/workers/register",
+            json=payload,
+            timeout=10.0
+        )
+        if res.status_code == 200:
+            logger.info(f"Worker '{worker_id}' registered with Hub.")
+        else:
+            logger.warning(f"Worker registration failed: {res.status_code}")
+    except Exception as e:
+        logger.warning(f"Cannot register with Hub: {e}")
+
+def send_heartbeat():
+    """Send a liveness heartbeat to the GCP Hub."""
+    try:
+        res = httpx.post(
+            f"{GCP_HUB_URL}/api/workers/heartbeat",
+            json={"worker_id": get_worker_id()},
+            timeout=5.0
+        )
+        if res.status_code != 200:
+            logger.debug(f"Heartbeat response: {res.status_code}")
+    except Exception:
+        pass  # Heartbeat failures are non-critical
+
 def run_sync():
     """Run all sync passes."""
+    send_heartbeat()
     sync_to_gcs()
     sync_to_firestore()
     pull_corrections()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    register_worker()
     run_sync()

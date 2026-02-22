@@ -14,6 +14,8 @@
 			<a href="/rides" class="nav-link">Rides & Reviews</a>
 			<a href="/analytics" class="nav-link">Analytics</a>
 			<a href="/jobs" class="nav-link">Job Monitor</a>
+			<a href="/models" class="nav-link">Active Learning</a>
+			<a href="/fleet" class="nav-link">Fleet</a>
 		</nav>
 	</aside>
 

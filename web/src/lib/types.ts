@@ -11,6 +11,7 @@ export interface Ride {
     video_count: number;
     sighting_count: number;
     reviewed: boolean; // default false
+    worker_id?: string; // Origin device
     created_at: string;
     updated_at: string;
 }
@@ -51,6 +52,8 @@ export interface Sighting {
     attrs_json?: Record<string, any>;
     deleted: boolean;
     trained?: boolean;
+    worker_id?: string; // Origin device
+    reviewed_by?: string; // Reviewer identity
     created_at: string;
     updated_at: string;
 }
@@ -89,4 +92,17 @@ export interface ModelVersion {
     lineage_ids: string[]; // List of Sighting IDs used to train this version
     created_at: string;
     deployed_at?: string;
+}
+
+export interface Worker {
+    id: string; // Unique device fingerprint or UUID
+    hostname: string;
+    hardware: string; // e.g. 'Apple M4 Mac mini'
+    os_version?: string;
+    status: 'online' | 'offline';
+    capabilities: string[]; // e.g. ['inference', 'training']
+    last_seen: string; // ISO 8601
+    ride_count: number;
+    sighting_count: number;
+    registered_at: string;
 }

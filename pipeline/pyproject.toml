@@ -3,7 +3,7 @@ name = "pipeline"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12, <3.14"
 dependencies = [
     "coremltools>=9.0",
     "fastapi>=0.129.2",
@@ -12,6 +12,7 @@ dependencies = [
     "imagehash>=4.3.2",
     "onnxruntime>=1.24.2",
     "pillow>=12.1.1",
+    "pyobjc>=12.1",
     "ultralytics>=8.4.14",
     "uvicorn>=0.41.0",
 ]

@@ -22,14 +22,17 @@ export async function POST({ request }) {
         }
 
         const data = await request.json();
-        const { rides = [], videos = [], sightings = [] } = data;
+        const { rides = [], videos = [], sightings = [], worker_id } = data;
 
         // Use a Firestore batched write
         const batch = db.batch();
 
         for (const ride of rides as Ride[]) {
             const ref = db.collection('rides').doc(ride.id);
-            batch.set(ref, ride, { merge: true });
+            batch.set(ref, {
+                ...ride,
+                worker_id: worker_id || ride.worker_id || 'unknown'
+            }, { merge: true });
         }
 
         for (const video of videos as Video[]) {
@@ -41,11 +44,27 @@ export async function POST({ request }) {
             const ref = db.collection('sightings').doc(sighting.id);
             batch.set(ref, {
                 ...sighting,
-                trained: sighting.trained ?? false
+                trained: sighting.trained ?? false,
+                worker_id: worker_id || sighting.worker_id || 'unknown'
             }, { merge: true });
         }
 
         await batch.commit();
+
+        // Update worker contribution counts if worker_id provided
+        if (worker_id) {
+            const workerRef = db.collection('workers').doc(worker_id);
+            const workerDoc = await workerRef.get();
+            if (workerDoc.exists) {
+                const existing = workerDoc.data()!;
+                await workerRef.update({
+                    ride_count: (existing.ride_count || 0) + rides.length,
+                    sighting_count: (existing.sighting_count || 0) + sightings.length,
+                    last_seen: new Date().toISOString(),
+                    status: 'online'
+                });
+            }
+        }
 
         return json({
             success: true,
