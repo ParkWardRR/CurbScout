@@ -14,7 +14,7 @@ cd CurbScout
 
 ### 2. Set Up the Development Environment
 
-CurbScout has two main components — a **Python pipeline + API backend** and a **SvelteKit review UI**.
+CurbScout has three main components — a **Python pipeline** (M4 worker), a **SvelteKit web dashboard** (GCP Hub), and a **native macOS SwiftUI app**.
 
 #### Python (pipeline + API)
 
@@ -43,10 +43,19 @@ ffmpeg -version
 | npm | 10+ | Package manager |
 
 ```bash
-cd ui
+cd web
 npm install
 npm run dev
 ```
+
+#### macOS App (native review UI)
+
+| Tool | Minimum Version | Purpose |
+|---|---|---|
+| Xcode | 15+ | SwiftUI compilation |
+| macOS | 14+ Sonoma | DiskArbitration, MenuBarExtra |
+
+Open `macos/CurbScout/CurbScout.xcodeproj` in Xcode and build.
 
 ### 3. Create a Branch
 
@@ -94,13 +103,18 @@ Follow the coding standards below, then open a pull request.
 - Adding test coverage to pipeline stages.
 - UI polish — animations, dark mode refinements, accessibility fixes.
 - Adding new vehicle make/model entries to the classifier training data.
+- Improving the parking sign RegEx rule parser (`pipeline/curbscout/rules.py`).
 
 ### Areas That Need Help
 
 - Vehicle detection & classification improvements.
 - Deduplication algorithm tuning.
-- macOS-specific integration (Core ML, folder watcher).
-- Parking sign OCR and rule parsing (Phase 5).
+- macOS SwiftUI app polish and additional views.
+- Parking sign OCR accuracy improvements for edge cases.
+- Hazard detection model training with real-world data.
+- Active Learning pipeline testing with production correction volumes.
+- Fleet management UI enhancements (worker logs, job history per worker).
+- Storefront OCR implementation (Phase 4C).
 
 ---
 
@@ -119,8 +133,15 @@ pytest --cov=curbscout --cov-report=term-missing
 ### SvelteKit Tests
 
 ```bash
-cd ui
+cd web
 npm run test
+```
+
+### Type Checking
+
+```bash
+cd web
+npm run check
 ```
 
 ### Pre-Commit Checks
@@ -131,7 +152,7 @@ Before opening a PR, make sure everything passes:
 ruff format --check .
 ruff check .
 pytest
-cd ui && npm run lint && npm run check
+cd web && npm run lint && npm run check
 ```
 
 ---
@@ -149,14 +170,20 @@ cd ui && npm run lint && npm run check
 
 ## Architecture Notes
 
-CurbScout follows a **local-first, spec-driven** architecture:
+CurbScout follows a **hub-and-spoke, spec-driven** architecture:
 
-- **Pipeline:** ingest → segment → sample frames → detect → crop → classify → dedupe → persist.
-- **Storage:** SQLite for structured data; filesystem for video and image assets.
-- **UI:** SvelteKit served from `localhost`, communicating with a local Python API.
-- **Cloud (later phases):** Only derived artifacts (JSON + thumbnails) sync to GCP/DO.
+- **Pipeline (`pipeline/`):** ingest → segment → sample frames → detect (multi-model YOLO) → crop → classify/OCR → dedupe → persist → sync.
+- **Intelligence Modules (`pipeline/curbscout/ocr.py`, `rules.py`):** Apple Vision OCR + RegEx rule parsing for curb intelligence.
+- **Storage:** SQLite for structured data on M4; Firestore for cloud-synced metadata; GCS for artifacts.
+- **Web Dashboard (`web/`):** SvelteKit on GCP Cloud Run. Pages: Dashboard, Rides & Reviews, Analytics (Mapbox), Job Monitor, Active Learning Lab, Fleet Management.
+- **Native App (`macos/`):** SwiftUI app reading directly from SQLite. Sighting grid, video scrubber, menu bar status, camera auto-detection.
+- **Active Learning:** Automated correction-to-training loop. Corrections → threshold trigger → Vast.ai training → GCS export → M4 auto-deploy.
+- **Fleet:** Multi-worker registration, heartbeat, data provenance, reviewer leaderboard.
+- **Deploy (`deploy/`):** Vast.ai ephemeral GPU scripts. Auto-install, train, export, webhook, self-destruct.
 
 Read the [constitution](.specify/memory/constitution.md) for the full set of development principles.
+
+All specs live under `specs/` (Phases 4–7) and `.specify/specs/` (Phase 1).
 
 ---
 

@@ -4,6 +4,8 @@
 
 **GCP-orchestrated perception pipeline — ride video to structured city intelligence.**
 
+**All 7 phases implemented** — vehicle detection, curb intelligence, active learning, multi-device fleet, and native macOS app.
+
 [![License: Blue Oak 1.0.0](https://img.shields.io/badge/license-Blue%20Oak%201.0.0-2D6EB5?style=for-the-badge)](https://blueoakcouncil.org/license/1.0.0)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![SvelteKit](https://img.shields.io/badge/svelte_kit-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white)](https://kit.svelte.dev)
@@ -50,6 +52,10 @@
 - [Vehicle Recognition](#vehicle-recognition)
 - [Deduplication Strategy](#deduplication-strategy)
 - [Security and Privacy](#security-and-privacy)
+- [Curb Intelligence](#curb-intelligence)
+- [Active Learning Loop](#active-learning-loop)
+- [Multi-Device Fleet](#multi-device-fleet)
+- [Native macOS Application](#native-macos-application)
 - [Roadmap](#roadmap)
 - [Cost Analysis](#cost-analysis)
 - [Specification Kit](#specification-kit)
@@ -60,7 +66,7 @@
 
 ## Overview
 
-CurbScout is a three-tier perception system for extracting structured urban data from action camera footage. It processes raw 4K video captured during daily cycling commutes, identifies every vehicle in frame, classifies each by make and model, deduplicates repeated sightings, and persists the results into a queryable database.
+CurbScout is a three-tier perception system for extracting structured urban data from action camera footage. It processes raw 4K video captured during daily cycling commutes, identifies every vehicle in frame, classifies each by make and model, deduplicates repeated sightings, and persists the results into a queryable database. Beyond vehicles, CurbScout performs **parking sign OCR**, **hazard mapping**, and **storefront change detection** — turning raw ride footage into actionable curb intelligence. The system self-improves through an **automated active learning pipeline** that trains new models from user corrections, and supports **multi-device fleet collaboration** with real-time worker status monitoring. A **native macOS SwiftUI application** provides local-first sighting review with frame-accurate video scrubbing.
 
 The system uses a **hub-and-spoke architecture** with GCP as the central orchestration layer:
 
@@ -820,47 +826,87 @@ Raw video footage never leaves the local machine unless the user explicitly opts
 
 ---
 
+## Curb Intelligence
+
+Beyond vehicle detection, CurbScout extracts actionable street-level intelligence from ride footage:
+
+- **Parking Sign OCR** — YOLOv8 detects parking signs → Apple Vision framework (native macOS CoreML) extracts text → RegEx parser converts raw OCR into structured JSON rules (duration, time windows, exceptions). The analytics dashboard renders signs as interactive green map pins.
+- **Hazard Mapping** — Potholes, bike lane obstructions, and construction cones are detected and mapped as red hazard pins with temporal tracking across rides.
+- **Storefront OCR** — Text extraction from storefronts to track business changes on frequently ridden routes.
+
+All intelligence modules reuse the existing sighting schema via the `attrs_json` field and `predicted_make` classification forks.
+
+## Active Learning Loop
+
+CurbScout self-improves through an automated correction-to-training pipeline:
+
+1. **Threshold Trigger** — Cloud Scheduler hits `GET /api/jobs/trigger-auto-train`. If un-trained corrections exceed `$AUTO_TRAIN_THRESHOLD` (default: 100), a training batch is compiled.
+2. **Lineage Tracking** — Every correction included in a training batch is recorded in a `MODELS` Firestore collection with `lineage_ids` linking back to specific sighting UUIDs.
+3. **Vast.ai Dispatch** — GCP Cloud Tasks provisions an ephemeral RTX 4090 instance. The worker trains, exports `.onnx` and `.mlmodel`, uploads to GCS, and pings `POST /api/webhooks/vast-export`.
+4. **Auto-Deploy** — The webhook flips the model status to `deployed`. The M4's `sync_models.py` queries `GET /api/models/active` and symlinks the new weights into the inference pipeline.
+
+Zero manual intervention. Corrections flow automatically from the review UI through training back into production inference.
+
+## Multi-Device Fleet
+
+CurbScout supports multiple M4 workers contributing to a shared intelligence dataset:
+
+- **Worker Registration** — `POST /api/workers/register` creates worker records in Firestore with hardware fingerprints and capabilities.
+- **Heartbeat Protocol** — Workers pulse `POST /api/workers/heartbeat` periodically. Workers silent for >5 minutes are marked `offline`.
+- **Data Provenance** — Every synced ride and sighting carries a `worker_id` field for attribution. The Fleet dashboard (`/fleet`) shows worker cards with status indicators and contribution counts.
+- **Reviewer Leaderboard** — Per-reviewer correction counts tracked via the `reviewed_by` field, displayed as a competitive leaderboard.
+
+## Native macOS Application
+
+A native SwiftUI app (`macos/CurbScout/`) provides local-first sighting review without requiring internet connectivity:
+
+- **SQLite Bridge** — Direct read-only access to the pipeline's `curbscout.db` via the raw SQLite3 C API. No external dependencies.
+- **Sighting Grid** — `LazyVGrid` with crop thumbnails, classification overlays, confidence badges, and filter bar (All/Pending/Reviewed/Intelligence).
+- **Video Scrubber** — AVFoundation `AVPlayer` with frame-accurate seeking (±1 frame via `CMTime`), ±5s skip, and ride selection sidebar.
+- **Menu Bar Extra** — `MenuBarExtra` showing pipeline status (Idle/Processing/Syncing) by polling `pipeline_status.json`.
+- **Camera Auto-Launch** — `DiskArbitration` observer detects GoPro/dashcam DCIM mounts and auto-triggers the pipeline.
+
+---
+
 ## Roadmap
 
-### Phase 1A — GCP Orchestration Hub *(build first)*
+### Phase 1A — GCP Orchestration Hub ✅
 
-Deploy the central control plane on GCP (free tier). SvelteKit dashboard on Cloud Run with Firestore schema for rides, sightings, corrections, and job state. GCS bucket for artifacts (crops, models, exports). Cloud Tasks queue for dispatching jobs to M4 and Vast.ai workers. Job orchestration API: create, monitor, and cancel inference and training jobs. Authentication via Firebase Auth. This is the first thing built — workers plug into it.
+Deploy the central control plane on GCP (free tier). SvelteKit dashboard on Cloud Run with Firestore schema for rides, sightings, corrections, and job state. GCS bucket for artifacts (crops, models, exports). Cloud Tasks queue for dispatching jobs to M4 and Vast.ai workers. Job orchestration API: create, monitor, and cancel inference and training jobs. Authentication via Firebase Auth.
 
-### Phase 1B — M4 Pipeline + Vast.ai Worker *(build in parallel)*
+### Phase 1B — M4 Pipeline + Vast.ai Worker ✅
 
 **M4 Mac mini (local worker):**
-USB ingest from Insta360 GO 3S. Full perception pipeline: frame sampling, YOLOv8 detection (CoreML ANE), tiered classification, deduplication, SQLite persistence. GCP sync daemon pushes derived artifacts to Firestore/GCS after each pipeline run. Polls Cloud Tasks for inbound jobs from the dashboard. Can also push training requests to GCP.
+USB ingest from Insta360 GO 3S. Full perception pipeline: frame sampling, YOLOv8 detection (CoreML ANE), tiered classification, deduplication, SQLite persistence. GCP sync daemon pushes derived artifacts to Firestore/GCS after each pipeline run. Polls Cloud Tasks for inbound jobs from the dashboard.
 
 **Vast.ai (ephemeral GPU worker):**
-Bootstrap script: install deps → download dataset from GCS → fine-tune model → export CoreML + ONNX + TensorRT → upload to GCS → auto-destroy. Provisioned by GCP Cloud Tasks when user dispatches a training job from the dashboard. Never running unless explicitly requested. Auto-kill safety guard (12h max).
+Bootstrap script: install deps → download dataset from GCS → fine-tune model → export CoreML + ONNX + TensorRT → upload to GCS → auto-destroy. Provisioned by GCP Cloud Tasks when user dispatches a training job from the dashboard.
 
-### Phase 2 — Analytics + Job Monitoring
+### Phase 2 — Analytics + Job Monitoring ✅
 
-Extend the GCP dashboard with analytics: Mapbox GL sighting heatmaps, time-of-day patterns, make/model frequency charts. Real-time job monitoring panel: see active M4 pipeline runs and Vast.ai training jobs, view logs, estimated completion, and costs. Authentication via Firebase Auth or Cloudflare Access.
+Mapbox GL sighting heatmaps with distinct layers for vehicles (heatmap), hazards (red pins), and parking signs (green pins). Time-of-day patterns and make/model frequency charts via Chart.js. Real-time job monitoring panel.
 
-### Phase 3 — Active Learning Pipeline
+### Phase 3 — Active Learning Pipeline ✅
 
-Export corrected labels from Firestore. Upload curated datasets to GCS. Dispatch fine-tuning jobs to Vast.ai from the dashboard: RTX 4090 instances, Stanford Cars + CurbScout corrections. A/B test new model against Jordo23 baseline. Auto-export to CoreML, ONNX, and TensorRT. M4 pulls new models from GCS automatically.
+Export corrected labels from Firestore. Upload curated datasets to GCS. Dispatch fine-tuning jobs to Vast.ai from the dashboard. A/B test new model against baseline. Auto-export to CoreML, ONNX, and TensorRT. M4 pulls new models from GCS automatically.
 
-### Phase 4 — Curb Intelligence
+### Phase 4 — Curb Intelligence ✅
 
-- **4A: Parking Sign OCR** — YOLOv8 sign detector + PaddleOCR for text extraction. Parse time windows and restrictions. Santa Monica municipal code integration for "can I park here?"
-- **4B: Hazard Mapping** — bike lane obstructions, potholes, construction zones. Temporal change detection across rides on the same route.
-- **4C: Storefront OCR** — track business changes on frequently ridden routes.
+- **4A: Parking Sign OCR** — YOLOv8 sign detector + Apple Vision native macOS OCR + RegEx rule parser. Interactive map pins with parsed rule data.
+- **4B: Hazard Mapping** — Potholes, bike lane obstructions, and construction cones detected and mapped with temporal tracking.
+- **4C: Storefront OCR** — Text extraction framework for tracking business changes.
 
-All curb intelligence modules reuse the existing event timeline, evidence asset, and human correction database architecture. Jobs dispatch through GCP to M4 for inference.
+### Phase 5 — Active Learning Loop ✅
 
-### Phase 5 — Active Learning Loop
+Automated correction-to-training pipeline with threshold-based triggering. Model lineage tracking via `MODELS` Firestore collection. Vast.ai export webhook for auto-deployment. M4 sync script queries Hub for active model version.
 
-Automated correction-to-training pipeline: user corrections in Firestore auto-queue for the next training batch. GCP dispatches Vast.ai training jobs. Model versioning with data lineage tracking. New models auto-deploy to M4 via GCS.
+### Phase 6 — Multi-Device Collaboration ✅
 
-### Phase 6 — Multi-Device Collaboration
+Multiple M4 workers register via fleet API. Heartbeat protocol for liveness monitoring. Worker attribution on all synced data. Fleet Management dashboard with per-reviewer leaderboard.
 
-Multiple M4 Macs or other workers register with the GCP hub. Database sync via Firestore (replaces CRDTs). Multiple riders contributing to a shared sighting dataset. Multi-user dashboard views with per-user review progress.
+### Phase 7 — Native macOS Application ✅
 
-### Phase 7 — Native macOS Application
-
-Port the SvelteKit review UI to a native SwiftUI application. SwiftData persistence layer reading the local SQLite database. Native AVFoundation video scrubber. Menu bar status indicator for pipeline progress. Auto-launch on camera connection via IOKit/DiskArbitration. Deferred to end — the GCP-hosted SvelteKit dashboard serves as the primary review experience.
+SwiftUI app with NavigationSplitView, LazyVGrid sighting review, AVFoundation video scrubber with frame-accurate seeking, MenuBarExtra pipeline status indicator, and DiskArbitration camera auto-detection.
 
 ---
 
@@ -928,7 +974,9 @@ CurbScout uses a spec-driven development methodology via GitHub Spec Kit. Featur
 uvx --from git+https://github.com/github/spec-kit.git specify init curbscout
 ```
 
-All design artifacts are maintained under `.specify/`:
+All design artifacts are maintained across `.specify/` and `specs/`:
+
+### Phase 1 — Local Pipeline MVP (`.specify/specs/001-local-pipeline-mvp/`)
 
 | Artifact | Path | Purpose |
 |:---|:---|:---|
@@ -941,6 +989,38 @@ All design artifacts are maintained under `.specify/`:
 | Data Model | `.specify/specs/001-local-pipeline-mvp/data-model.md` | SQLite schema and file system layout |
 | Quickstart | `.specify/specs/001-local-pipeline-mvp/quickstart.md` | Developer setup guide |
 | Vast.ai Deploy Kit | `.specify/vastai-deploy-kit/` | GPU fleet orchestration toolkit |
+
+### Phase 4 — Curb Intelligence (`specs/002-curb-intelligence/`)
+
+| Artifact | Path | Purpose |
+|:---|:---|:---|
+| Feature Spec | `specs/002-curb-intelligence/spec.md` | Parking sign OCR, hazard mapping, storefront OCR |
+| Research | `specs/002-curb-intelligence/research.md` | Apple Vision vs Tesseract, YOLOv8 hazard classes |
+| Data Model | `specs/002-curb-intelligence/data-model.md` | SIGHTING schema extensions for intelligence types |
+| Tasks | `specs/002-curb-intelligence/tasks.md` | Phase 4A (pipeline) + Phase 4B (dashboard) tasks |
+
+### Phase 5 — Active Learning Loop (`specs/003-active-learning-loop/`)
+
+| Artifact | Path | Purpose |
+|:---|:---|:---|
+| Feature Spec | `specs/003-active-learning-loop/spec.md` | Auto-training triggers and model lineage |
+| Research | `specs/003-active-learning-loop/research.md` | Trigger mechanisms, state management |
+| Data Model | `specs/003-active-learning-loop/data-model.md` | MODELS collection, trained flag |
+| Tasks | `specs/003-active-learning-loop/tasks.md` | Phase 5A (GCP orchestration) + Phase 5B (edge sync) |
+
+### Phase 6 — Multi-Device Collaboration (`specs/004-multi-device-collab/`)
+
+| Artifact | Path | Purpose |
+|:---|:---|:---|
+| Feature Spec | `specs/004-multi-device-collab/spec.md` | Worker registration, fleet management, attribution |
+| Tasks | `specs/004-multi-device-collab/tasks.md` | Phase 6A/B/C tasks for fleet infra |
+
+### Phase 7 — Native macOS Application (`specs/005-native-macos-app/`)
+
+| Artifact | Path | Purpose |
+|:---|:---|:---|
+| Feature Spec | `specs/005-native-macos-app/spec.md` | SwiftUI app, AVFoundation, DiskArbitration |
+| Tasks | `specs/005-native-macos-app/tasks.md` | Phase 7A/B/C/D tasks for macOS app |
 
 ---
 

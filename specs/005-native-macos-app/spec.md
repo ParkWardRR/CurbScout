@@ -2,7 +2,8 @@
 
 **Feature Branch**: `005-native-macos-app`  
 **Created**: 2026-02-21  
-**Status**: Draft
+**Status**: ✅ Implemented  
+**Merged**: 2026-02-21
 
 ## Overview
 

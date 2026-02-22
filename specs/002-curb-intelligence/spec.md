@@ -1,8 +1,9 @@
 # Feature Specification: Curb Intelligence
 
 **Feature Branch**: `002-curb-intelligence`  
-**Created**: 2026-02-21
-**Status**: Draft  
+**Created**: 2026-02-21  
+**Status**: ✅ Implemented  
+**Merged**: 2026-02-21  
 **Input**: User description: "Implement Phase 4: Curb Intelligence including Parking Sign OCR, Hazard Mapping, and Storefront OCR on the M4."
 
 ## User Scenarios & Testing *(mandatory)*
