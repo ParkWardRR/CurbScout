@@ -10,7 +10,7 @@
     let imgUrl = $derived(
         sighting.best_crop_id.startsWith("http")
             ? sighting.best_crop_id
-            : `/api/crops/${sighting.best_crop_id}`, // fallback proxy if needed
+            : `/api/images/crops/${sighting.best_crop_id}.jpg`,
     );
 
     let confLevel = $derived(
