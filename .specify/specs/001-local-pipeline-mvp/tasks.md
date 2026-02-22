@@ -34,11 +34,11 @@
 - [x] T010 Implement CoreML accelerator module: `pipeline/curbscout/accelerator.py` for ANE processing via `coremltools`.
 - [x] T011 Implement Video Ingest: `pipeline/curbscout/ingest.py` to copy MP4s, compute checksums, and extract metadata.
 - [x] T012 Implement Frame Sampling: `pipeline/curbscout/sampler.py` to extract 2fps keyframes using VideoToolbox.
-- [ ] T013 Implement Vehicle Detection: run YOLOv8n (CoreML) to extract crops and bounding boxes.
-- [ ] T014 Implement Classification: run Jordo23 EfficientNet (CoreML) and VehicleTypeNet fallback on crops.
-- [ ] T015 Implement Deduplication: temporal, spatial (IoU), and perceptual hash grouping.
-- [ ] T016 Implement GCP Sync Daemon: background process that pushes Sighting metadata to Firestore and crops/clips to GCS after each run.
-- [ ] T017 Implement Job Polling: daemon polls GCP Cloud Tasks for inference or reprocessing jobs dispatched by the dashboard.
+- [x] T013 Implement Vehicle Detection: run YOLOv8n (CoreML) to extract crops and bounding boxes.
+- [x] T014 Implement Classification: run Jordo23 EfficientNet (CoreML) and VehicleTypeNet fallback on crops.
+- [x] T015 Implement Deduplication: temporal, spatial (IoU), and perceptual hash grouping.
+- [x] T016 Implement GCP Sync Daemon: background process that pushes Sighting metadata to Firestore and crops/clips to GCS after each run.
+- [x] T017 Implement Job Polling: daemon polls GCP Cloud Tasks for inference or reprocessing jobs dispatched by the dashboard.
 
 ### Track 2: Vast.ai Ephemeral GPU Worker
 
