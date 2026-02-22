@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+	/* Deep Space Theme */
+	--bg-app: hsl(220, 20%, 8%);
+	--bg-card: hsl(220, 18%, 13%);
+	--bg-hover: hsl(220, 18%, 18%);
+	--text-primary: hsl(0, 0%, 98%);
+	--text-secondary: hsl(220, 10%, 65%);
+	--text-muted: hsl(220, 10%, 45%);
+	--border-light: hsl(220, 15%, 20%);
+	--accent-blue: hsl(210, 100%, 60%);
+	--status-green: hsl(150, 70%, 45%);
+	--status-amber: hsl(40, 90%, 55%);
+	--status-red: hsl(0, 70%, 55%);
+	
+	/* Typography */
+	--font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+	
+	/* Layout */
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	
+	/* Transitions */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--duration: 150ms;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--font-sans);
+	background-color: var(--bg-app);
+	color: var(--text-primary);
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+}
+
+button {
+	font-family: inherit;
+	cursor: pointer;
+	border: none;
+	background: none;
+}
+
+a {
+	color: var(--accent-blue);
+	text-decoration: none;
+}
+
+.container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 2rem;
+}
+
+.card {
+	background-color: var(--bg-card);
+	border-radius: var(--radius-md);
+	border: 1px solid var(--border-light);
+	padding: 1.5rem;
+}
+
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+
+h1 { font-size: 2rem; font-weight: 700; }
+h2 { font-size: 1.5rem; font-weight: 600; }
+h3 { font-size: 1.25rem; font-weight: 500; }
+
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-small { font-size: 0.875rem; }
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.25rem 0.5rem;
+	border-radius: var(--radius-sm);
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.badge-green { background-color: color-mix(in srgb, var(--status-green) 20%, transparent); color: var(--status-green); }
+.badge-amber { background-color: color-mix(in srgb, var(--status-amber) 20%, transparent); color: var(--status-amber); }
+.badge-red { background-color: color-mix(in srgb, var(--status-red) 20%, transparent); color: var(--status-red); }

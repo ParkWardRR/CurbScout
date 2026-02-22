@@ -11,14 +11,14 @@
 
 **Purpose**: Establish the central control plane, database, job queues, and the always-on web dashboard.
 
-- [ ] T001 Create SvelteKit project `web/` using `npx -y sv create` with Svelte 5, TypeScript, adapter-node.
-- [ ] T002 Configure GCP project, enable Firestore, Cloud Storage, and Cloud Tasks APIs.
-- [ ] T003 Create Firestore schema: collections for `rides`, `videos`, `sightings`, `corrections`, and `jobs`.
-- [ ] T004 Implement SvelteKit API endpoints (`web/src/routes/api/`) to handle incoming data syncs from M4 workers and serve the UI.
-- [ ] T005 Implement Cloud Tasks integration to dispatch inference jobs to M4 and training jobs to Vast.ai.
-- [ ] T006 Implement Cloud Run deployment pipeline for the SvelteKit dashboard.
+- [x] T001 Create SvelteKit project `web/` using `npx -y sv create` with Svelte 5, TypeScript, adapter-node.
+- [x] T002 Configure GCP project, enable Firestore, Cloud Storage, and Cloud Tasks APIs.
+- [x] T003 Create Firestore schema: collections for `rides`, `videos`, `sightings`, `corrections`, and `jobs`.
+- [x] T004 Implement SvelteKit API endpoints (`web/src/routes/api/`) to handle incoming data syncs from M4 workers and serve the UI.
+- [x] T005 Implement Cloud Tasks integration to dispatch inference jobs to M4 and training jobs to Vast.ai.
+- [x] T006 Implement Cloud Run deployment pipeline for the SvelteKit dashboard.
 - [ ] T007 Build the Review UI (`web/src/routes/rides/[id]/review`): sighting grid, keyboard shortcuts (confirm, correct, delete).
-- [ ] T008 Build the Job Dashboard UI: monitor active pipeline runs on M4 and training runs on Vast.ai.
+- [x] T008 Build the Job Dashboard UI: monitor active pipeline runs on M4 and training runs on Vast.ai.
 
 **Checkpoint**: GCP Cloud Run dashboard is live. Firestore database is ready to accept data. Job queues are configured.
 
