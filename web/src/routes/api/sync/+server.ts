@@ -39,7 +39,10 @@ export async function POST({ request }) {
 
         for (const sighting of sightings as Sighting[]) {
             const ref = db.collection('sightings').doc(sighting.id);
-            batch.set(ref, sighting, { merge: true });
+            batch.set(ref, {
+                ...sighting,
+                trained: sighting.trained ?? false
+            }, { merge: true });
         }
 
         await batch.commit();

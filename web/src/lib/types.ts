@@ -50,6 +50,7 @@ export interface Sighting {
     lng?: number;
     attrs_json?: Record<string, any>;
     deleted: boolean;
+    trained?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -75,4 +76,17 @@ export interface Job {
     started_at?: string;
     completed_at?: string;
     error?: string;
+}
+
+export interface ModelVersion {
+    id: string; // UUID of the model record
+    version: string;
+    status: 'training' | 'failed' | 'exported' | 'deployed';
+    job_id: string;
+    accuracy_baseline?: number;
+    accuracy_new?: number;
+    gcs_uri?: string;
+    lineage_ids: string[]; // List of Sighting IDs used to train this version
+    created_at: string;
+    deployed_at?: string;
 }

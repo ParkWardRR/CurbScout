@@ -16,40 +16,61 @@ def pull_latest_coreml_models():
     and pull them down dynamically to update the M4 prediction backend.
     """
     logger.info("Checking GCS Orchestration Hub for newly finetuned CoreML weights...")
-    
     try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(GCS_BUCKET)
-    except Exception as e:
-        logger.warning(f"GCP Storage client uninitialized (mocking out download): {e}")
-        return
+        import httpx
+        GCP_HUB_URL = os.environ.get("GCP_HUB_URL", "http://localhost:5173")
+        res = httpx.get(f"{GCP_HUB_URL}/api/models/active", timeout=10.0)
+        res.raise_for_status()
         
-    os.makedirs(MODEL_DIR, exist_ok=True)
+        data = res.json()
+        if not data.get("has_active"):
+            logger.info("No active deployed models tracked by Google Cloud Hub.")
+            return
+
+        model_info = data["model"]
+        version = model_info.get("version", "unknown")
+        gcs_uri = model_info.get("gcs_uri")
         
-    try:
-        # We assume export.sh uploads `best.mlpackage` into models/cls_<timestamp>/
-        blobs = list(bucket.list_blobs(prefix="models/"))
-        if not blobs:
-            logger.info("No remote models found.")
+        if not gcs_uri or not gcs_uri.startswith("gs://"):
+            logger.error(f"Malformed GCS URI returned for active model {version}. Got: {gcs_uri}")
             return
             
-        # Example logic looking for coreml zipped packages
-        # Since .mlpackage is a directory, vast.ai export_teardown.py should zip it.
-        # Here we mock finding a best.pt or best.mlmodel
+        logger.info(f"Hub reports deployed active model is version {version} at {gcs_uri}")
+        
+        bucket_name = gcs_uri.split("gs://")[1].split("/")[0]
+        prefix = gcs_uri.split(f"gs://{bucket_name}/")[1]
+
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+
+        blobs = list(bucket.list_blobs(prefix=prefix))
+        if not blobs:
+            logger.info("GCS Folder target is empty.")
+            return
+            
         latest_blob = max(blobs, key=lambda b: b.time_created)
         
         if "best" in latest_blob.name:
             filename = os.path.basename(latest_blob.name)
-            local_path = os.path.join(MODEL_DIR, filename)
+            # Tag the local file with its lineage version for tracking natively
+            local_filename = f"{version}_{filename}"
+            local_path = os.path.join(MODEL_DIR, local_filename)
             
             if not os.path.exists(local_path):
-                logger.info(f"Downloading new model weights: {filename}")
+                logger.info(f"Downloading newly minted {version} model weights: {filename}")
                 latest_blob.download_to_filename(local_path)
+                
+                # Update symlinks so logic like detector.py automatically loads the newest INT8 CoreML
+                active_link_path = os.path.join(MODEL_DIR, "yolov8n-active.pt") # fallback alias
+                if os.path.exists(active_link_path) or os.path.islink(active_link_path):
+                    os.remove(active_link_path)
+                os.symlink(local_path, active_link_path)
+                
             else:
-                logger.debug("M4 Local models are already up to date with Vast.ai exports.")
+                logger.debug(f"Local {version} model already downloaded and active.")
                 
     except Exception as e:
-        logger.error(f"Failed to pull latest models: {e}")
+        logger.error(f"Failed to pull latest models via Active Hub querying: {e}")
 
 if __name__ == "__main__":
     pull_latest_coreml_models()

@@ -57,18 +57,30 @@ def log_completion_to_firestore(artifacts: list):
     if not GCP_HUB_URL or not artifacts:
         return
         
-    logger.info("Reporting task completion to the Hub API")
+    logger.info("Reporting task collection to the Hub Webhook API")
+    # Retrieve MODEL_ID passed down ideally from the job trigger
+    model_id = os.environ.get("MODEL_ID", "mock-model-id-for-tests")
+    
+    # We use the folder URI for the model bundle
+    gcs_uri = f"gs://{GCS_BUCKET}/{artifacts[0].rsplit('/', 1)[0]}/" if artifacts else "unknown"
+    
     payload = {
-        "status": "completed",
-        "instance_id": VAST_INSTANCE_ID,
-        "artifacts": artifacts
+        "model_id": model_id,
+        "gcs_uri": gcs_uri
     }
     
     try:
-        # Pinging an API route (e.g. /api/jobs/[id]/complete) to register results
-        httpx.post(f"{GCP_HUB_URL}/api/jobs/complete", json=payload, headers={"Authorization": f"Bearer {WORKER_API_KEY}"})
+        vast_api_key = os.environ.get("VAST_API_KEY", "vast-dev-key")
+        res = httpx.post(
+            f"{GCP_HUB_URL}/api/webhooks/vast-export", 
+            json=payload, 
+            headers={"Authorization": f"Bearer {vast_api_key}"},
+            timeout=10.0
+        )
+        res.raise_for_status()
+        logger.info(f"Hub officially registered deploy: {res.json()}")
     except Exception as e:
-        logger.error(f"Cannot reach GCP Hub at {GCP_HUB_URL}: {e}")
+        logger.error(f"Cannot reach GCP Webhook at {GCP_HUB_URL}: {e}")
 
 def destroy_self():
     """Immediately kill the ephemeral Vast instance via Vast client API."""
