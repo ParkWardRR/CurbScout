@@ -96,19 +96,25 @@ def run_classification_batch():
             # Predict a timestamp for the sighting by assuming video start time + offset
             # (In a rigorous system we'd join Video.start_ts, but for MVP scaffolding we use now)
             
+            import random
+            mock_lat = 37.7749 + (random.uniform(-0.05, 0.05))
+            mock_lng = -122.4194 + (random.uniform(-0.05, 0.05))
+            
             t.execute('''
                 INSERT INTO SIGHTING (
                     id, ride_id, best_crop_id, timestamp, 
                     predicted_make, predicted_model, predicted_year, 
                     classification_confidence, year_confidence, classifier_model_ver,
                     needs_review, sanity_warning, sanity_warning_text, review_status,
+                    lat, lng,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'pending', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, 'pending', ?, ?, ?, ?)
             ''', (
                 sighting_id, det['ride_id'], det['frame_asset_id'], now_iso,
                 preds['make'], preds['model'], preds['year'],
                 preds['confidence'], preds['year_confidence'], 'jordo23-effnet-b4-mock',
                 sanity_warn, warn_text,
+                mock_lat, mock_lng,
                 now_iso, now_iso
             ))
             

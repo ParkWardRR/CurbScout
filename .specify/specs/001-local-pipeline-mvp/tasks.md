@@ -59,10 +59,10 @@
 
 **Purpose**: Enrich the dashboard with map visualizations and real-time infrastructure visibility.
 
-- [ ] T024 Add Mapbox GL sighting heatmaps to the GCP dashboard.
-- [ ] T025 Implement time-of-day and make/model frequency charts.
-- [ ] T026 Add real-time job log streaming using Firestore listeners.
-- [ ] T027 Implement basic authentication (Firebase Auth or Cloudflare Access).
+- [x] T024 Add Mapbox GL sighting heatmaps to the GCP dashboard.
+- [x] T025 Implement time-of-day and make/model frequency charts.
+- [x] T026 Add real-time job log streaming using Firestore listeners.
+- [x] T027 Implement basic authentication (Firebase Auth or Cloudflare Access).
 
 ---
 

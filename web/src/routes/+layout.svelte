@@ -1,5 +1,5 @@
 <script lang="ts">
-	import '../app.css';
+	import "../app.css";
 	let { children } = $props();
 </script>
 
@@ -12,8 +12,8 @@
 		<nav class="nav-links">
 			<a href="/" class="nav-link active">Dashboard</a>
 			<a href="/rides" class="nav-link">Rides & Reviews</a>
+			<a href="/analytics" class="nav-link">Analytics</a>
 			<a href="/jobs" class="nav-link">Job Monitor</a>
-			<a href="/models" class="nav-link">Active Learning</a>
 		</nav>
 	</aside>
 
@@ -57,7 +57,8 @@
 		font-weight: 500;
 	}
 
-	.nav-link:hover, .nav-link.active {
+	.nav-link:hover,
+	.nav-link.active {
 		background-color: var(--bg-hover);
 		color: var(--text-primary);
 	}

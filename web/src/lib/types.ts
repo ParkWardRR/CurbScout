@@ -46,6 +46,8 @@ export interface Sighting {
     sanity_warning: boolean;
     sanity_warning_text?: string | null;
     review_status: 'pending' | 'confirmed' | 'corrected' | 'deleted';
+    lat?: number;
+    lng?: number;
     attrs_json?: Record<string, any>;
     deleted: boolean;
     created_at: string;

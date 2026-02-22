@@ -108,6 +108,8 @@ def init_db(path: str = DB_PATH):
         sanity_warning BOOLEAN DEFAULT 0,
         sanity_warning_text TEXT,
         review_status TEXT,
+        lat REAL,
+        lng REAL,
         attrs_json TEXT,
         deleted BOOLEAN DEFAULT 0,
         synced_to_gcp BOOLEAN DEFAULT 0,

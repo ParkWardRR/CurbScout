@@ -15,6 +15,7 @@
 		"@sveltejs/adapter-node": "^5.5.3",
 		"@sveltejs/kit": "^2.50.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@types/mapbox-gl": "^3.4.1",
 		"@types/uuid": "^10.0.0",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.3.6",
@@ -24,7 +25,10 @@
 	"dependencies": {
 		"@google-cloud/storage": "^7.19.0",
 		"@google-cloud/tasks": "^6.2.1",
+		"chart.js": "^4.5.1",
+		"firebase": "^12.9.0",
 		"firebase-admin": "^13.6.1",
+		"mapbox-gl": "^3.18.1",
 		"uuid": "^13.0.0",
 		"video.js": "^8.23.7"
 	}
