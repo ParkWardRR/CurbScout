@@ -912,25 +912,13 @@ SwiftUI app with NavigationSplitView, LazyVGrid sighting review, AVFoundation vi
 
 ## DevOps & Infrastructure
 
-### CI/CD
-
-GitHub Actions pipelines in `.github/workflows/`:
-
-| Workflow | Trigger | What It Does |
-|---|---|---|
-| `ci.yml` | Push/PR to `main` | Svelte type check, Python ruff lint, Docker build verification |
-| `deploy.yml` | Push to `main` (web/ changes) | Build Docker image → push to Artifact Registry → deploy to Cloud Run |
-
-### Local Development
+### Local CI
 
 ```bash
-# Full stack with Firebase Emulators
-docker compose up --build
-
-# Or run components individually
-cd web && npm run dev          # Dashboard at localhost:5173
-cd pipeline && python main.py  # Pipeline (one-shot)
-cd pipeline && python main.py --daemon  # Pipeline (continuous)
+# Run all checks before pushing
+cd web && npm run check && cd ..          # Svelte type check
+cd pipeline && uv run ruff format --check . && uv run ruff check . && cd ..  # Python lint
+docker build -t curbscout-web:local ./web  # Docker build verify
 ```
 
 ### GCP Infrastructure Setup
